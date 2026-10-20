@@ -1,0 +1,26 @@
+[
+  {
+    "slug": "building-bitcask-in-go",
+    "title": "Building Bitcask in Go: Architecture, Concurrency and Benchmarks",
+    "date": "2026-04-01",
+    "tag": "Go \u00b7 Databases",
+    "excerpt": "Architecture, concurrency, and benchmarks for a write-oriented database built from scratch.",
+    "minutes": 5
+  },
+  {
+    "slug": "parsing-one-billion-rows-in-zig-15x-performance-improvement",
+    "title": "Parsing One Billion Rows in Zig: 15x Performance Improvement",
+    "date": "2026-02-02",
+    "tag": "Zig \u00b7 Performance",
+    "excerpt": "Taking a billion-row parser further, one performance bottleneck at a time.",
+    "minutes": 20
+  },
+  {
+    "slug": "distributed-key-value-store",
+    "title": "Building a Distributed Key Value Store",
+    "date": "2025-08-18",
+    "tag": "Distributed systems",
+    "excerpt": "Building a key-value store and exploring what it takes to distribute data.",
+    "minutes": 11
+  }
+]

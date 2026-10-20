@@ -1,0 +1,118 @@
+<p>I want to build a simple database in Go and learn as much as I can from the experience. I&rsquo;ve chosen to implement the Bitcask architecture, a simple write-oriented design. <a href="https://github.com/AlexG28/Bitcask"  class="external-link" target="_blank" rel="noopener">Repo</a></p>
+<h4 id="architecture">
+  Architecture
+  
+</h4>
+<picture>
+    
+    
+    <img src="/images/diagram_hu_9335156314910f22.png" alt="Bitcask diagram" loading="lazy">
+  </picture>
+<p>Bitcask as an architecture is fundamentally about maintaining a set of open “log files”. Every single write appends to the most recent log file. Additionally, a hashmap is maintained in memory which maps a given key to a location of the most recent version of the value based on these files. Multiple files are used for this purpose as opposed to one for the following step: periodically, Bitcask will iterate over previous files and merge them together, eliminating duplicate values and saving on space.</p>
+<p>This architecture allows for extremely fast writes (every write points to exactly one spot in memory, the very end of the current write-to file) while preserving read speed. The tradeoff is that the system has to balance when and how to clean up duplicates, as those duplicates can temporarily cause high memory usage.</p>
+<h4 id="concurrency-model">
+  Concurrency model
+  
+</h4>
+<p>I took extra care to focus on concurrency for this project. In building high performance systems, it is crucial to follow strict principles such as locking shared resources, using queues and using Go’s built-in primitives such as select statements, to organize the path of execution.</p>
+<p>In my implementation, there are 2 core domains where resource contention is possible. Firstly, two operations, notably a write and a read, could try to read from the topmost file at the same time. Two reads from any other file are not a problem since they don’t interfere with each other and writes only happen at the very top file. Hence, Go’s <code>RWMutex</code> (read-write mutex) comes extremely handy, allowing me to make this distinction easily. Every opened file object is directly tied to such a mutex via the <code>segment</code> struct.</p>
+<p>Secondly, the main hashmap (key to <code>EntryLocation</code>) could be contended for, both by reads, writes and merges. Therefore, access to this map is locked behind another RWMutex. The <code>get()</code> showcases the logic behind this clearly: the lock for the map has to be acquired, and only then can the file header for that entry’s location be opened. Then the file lock has to be acquired. After which the map lock is released as this thread continues to execute on the file read. This illustrates the two layers of locks necessary for every operation.</p>
+<p>The merge step is by far the most complicated step due to the amount of steps it has to perform. Merge has to perform the following steps: 1. lock the entire hashmap for both reading and writing 2. iterate over every entry in it 3. fetch the value from the previous files 4. write them to new temporary files and update in a new hashmap and lastly 5. switch the old hashmap with the new hashmap and old file pointers to new file pointers, thereby completing the rotation. The bottleneck here is that merge needs the full read-write lock on the hashmap which means writes are impossible for the duration of the merge.</p>
+<h4 id="code-example">
+  Code example
+  
+</h4>
+<details class="code-collapse" open>
+    <summary>get function</summary>
+    <div class="collapse-content">
+        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
+<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
+<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
+</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
+</span></code></pre></td>
+<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
+<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">l</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Log</span>) <span style="color:#a6e22e">get</span>(<span style="color:#a6e22e">key</span> []<span style="color:#66d9ef">byte</span>) (<span style="color:#a6e22e">Entry</span>, <span style="color:#66d9ef">error</span>) {
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">l</span>.<span style="color:#a6e22e">stateMu</span>.<span style="color:#a6e22e">RLock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">val</span>, <span style="color:#a6e22e">ok</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">l</span>.<span style="color:#a6e22e">mapping</span>[string(<span style="color:#a6e22e">key</span>)]
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">ok</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">l</span>.<span style="color:#a6e22e">stateMu</span>.<span style="color:#a6e22e">RUnlock</span>()
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">Entry</span>{}, <span style="color:#a6e22e">ErrKeyNotFound</span>
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">seg</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">l</span>.<span style="color:#a6e22e">files</span>[<span style="color:#a6e22e">val</span>.<span style="color:#a6e22e">File_id</span>]
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">fileLock</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">seg</span>.<span style="color:#a6e22e">mu</span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">fileLock</span>.<span style="color:#a6e22e">RLock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">l</span>.<span style="color:#a6e22e">stateMu</span>.<span style="color:#a6e22e">RUnlock</span>()
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">entry</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">getFromDisk</span>(<span style="color:#a6e22e">seg</span>.<span style="color:#a6e22e">file</span>, <span style="color:#a6e22e">val</span>)
+</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">fileLock</span>.<span style="color:#a6e22e">RUnlock</span>()
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
+</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">Entry</span>{}, <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;failed to read from disk: %w&#34;</span>, <span style="color:#a6e22e">err</span>)
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">entry</span>, <span style="color:#66d9ef">nil</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></td></tr></table>
+</div>
+</div>
+    </div>
+</details>
+
+<p>This code snippet above illustrates the two-domain lock system. To retrieve a value based on a key, <code>stateMu</code> is locked until the correct file is found. Once the file is found, its own lock (<code>fileLock</code>) is acquired and only then is <code>stateMu</code> released.</p>
+<h4 id="testing">
+  Testing
+  
+</h4>
+<p>Testing to make sure there are no race conditions and deadlocks in such a system is absolutely essential. These tests <strong>concurrently</strong> stress the DB under <strong>disjoint keys</strong> vs <strong>shared keys</strong>, with <strong>SET/GET</strong> checks per iteration and a final verification in the shared-key case; <strong>full race detection</strong> is via <strong><code>go test -race</code></strong>.</p>
+<p>Besides performing regular unit tests on individual functions, I’ve added two tests to specifically test the concurrency model: <code>TestConcurrentDisjoint</code> and <code>TestConcurrentSharedKeys</code>. Both of these tests create a temporary db instance, and spawn a number of goroutines. Each routine sets a number of fake keys (following a pattern). The key here is that these goroutines are run concurrently, thereby testing the DB’s ability to process them. <code>TestConcurrentDisjoint</code>  tests the DB’s ability to write keys (every key is unique) and fails if a write fails while <code>TestConcurrentSharedKeys</code>  tests the ability to write and overwrite keys. Keys are generated before the concurrent step, each goroutine overwrites the key multiple times, and at the end, the results in the db are verified to ensure everything matches up. This testing strategy is absolutely crucial in guaranteeing that the system is able to handle a real workload.</p>
+<h4 id="benchmarking">
+  Benchmarking
+  
+</h4>
+<p>I’ve elected to use two different avenues to measure the performance of this app. The easy and straightforward way is to write microbenchmarks directly in the codebase, testing individual operations (get, set, sequential and concurrent) with Go’s built-in <code>testing.B</code> infrastructure. The second method involves using <code>memtier_benchmark</code> which simulates a real workload over multiple threads and connections. I benchmarked my app against a real in-memory Redis instance. While these are different architectures, I thought it would be fun to compare.</p>
+<p>The benchmark setup was:</p>
+<ul>
+<li>Bitcask running on localhost:8080 versus a Redis docker container running locally</li>
+<li>128 byte values, 4 threads, 50 clients.</li>
+</ul>
+<p>Results:</p>
+<picture>
+    
+    
+    <img src="/images/benchmark_charts_hu_2a7ef8c58dfef2bd.png" alt="Bitcask performance" loading="lazy">
+  </picture>
+<p>Overall, I am happy with the performance of my Bitcask implementation. While it supports significantly fewer features than real Redis, it doesn&rsquo;t run in memory, but on disk and despite this, I get faster reads with lower latencies, while being very competitive on writes.</p>
+<h4 id="room-for-improvement">
+  Room for improvement
+  
+</h4>
+<p>I have many ideas as to how to improve performance further:</p>
+<ul>
+<li>get only reads the bytes that contain the value from the disk, no need to return the entire entry and then decode it. Saves on some redundancy.</li>
+<li>have multiple “head” files to which we write. This would allow for parallel writes at the cost of significant complexity at the merge level and at the write level since now Bitcask will need some sort of a consistent hashing scheme.</li>
+<li>buffered writers that buffer incoming writes at the application level and batch write them to the disk at once. This should make writes even faster at the cost of potentially losing unwritten data in the case of a crash.</li>
+<li>change the merge step to be as unobtrusive as possible. Something like immediately start a new write file, freeze the old ones as immutable, and in parallel, write to the new file while compacting the old files.</li>
+</ul>
+<h4 id="sources">
+  Sources
+  
+</h4>
+<p><a href="https://riak.com/assets/bitcask-intro.pdf"  class="external-link" target="_blank" rel="noopener">Bitcask</a></p>
+<p><a href="https://github.com/AlexG28/Bitcask"  class="external-link" target="_blank" rel="noopener">Repo</a></p>
