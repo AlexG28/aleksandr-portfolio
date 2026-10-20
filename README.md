@@ -13,6 +13,7 @@ Open the local URL printed by the development server. The development, check, an
 
 ```sh
 bun run check    # TypeScript and Svelte accessibility diagnostics
+bun run test     # Article parsing and code-copy text checks
 bun run build    # Production build for Cloudflare
 bun run preview  # Serve the production build with the Cloudflare runtime
 ```
@@ -37,9 +38,13 @@ Authenticate with your own Cloudflare account first. Deployment publishes to a w
 - Original photographs, portrait, and article diagrams: `static/images/`
 - Shared design tokens and responsive styles: `src/app.css`
 
-To add an article, add its metadata to `posts.json` and a matching HTML file. Article files are repository-controlled content rendered as HTML. Do not insert untrusted user input here. To add a photograph, copy the image to `static/images/` and add its path, description, category (`Nature` or `City`), width, and height to `photos.json`.
+To add an article, add its metadata to `posts.json` and a matching HTML file. Code examples use `<pre data-code-language="go" data-code-title="Optional title"><code>…</code></pre>`; escape code as HTML. The article renderer provides syntax styling, line numbers, Copy, and Expand/Collapse controls. Article files are repository-controlled content rendered as HTML. Do not insert untrusted user input here. To add a photograph, copy the image to `static/images/` and add its path, description, category (`Nature` or `City`), width, and height to `photos.json`.
 
 The three existing articles, twelve photographs, portrait, and public professional details were migrated from https://aleksandrgyumushyan.com/ on October 19, 2026. Original article URLs are preserved (with SvelteKit's default normalization of trailing slashes). Images and fonts are local, with no dependency on the old domain. The old résumé URL returned 404 and is intentionally omitted until a working file is provided.
+
+## Version control
+
+Git is initialized on `main`. The first commit preserves the initial website; subsequent commits track refinements. No remote is configured.
 
 ## Interaction and accessibility
 

@@ -61,139 +61,68 @@ Gossip works in the same manner as a virus spreading, or an internet rumour: eve
   
 </h3>
 <p><code>raft.go</code> handles the setup and the running of RAFT. <code>type kvFsm struct</code> implements the RAFT interface as specified by the RAFT library by Hashicorp. The key here is the <code>func (kf *kvFsm) Apply(log *raft.Log) any {}</code> which is the function responsible for implementing the incoming changes to the log into the current nodes key value map. The RAFT algorithm in turn, works by making all member nodes agree on a certain set of previous steps, logs, that were taken to get to the current state. New logs are added onto the log list, and each node&rsquo;s <code>apply()</code>, applies them. If the log gets too long, the Raft library provides the option of snapshotting and storing that log out of memory, and restoring it if necessary.</p>
-<div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">kf</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">kvFsm</span>) <span style="color:#a6e22e">Apply</span>(<span style="color:#a6e22e">log</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">raft</span>.<span style="color:#a6e22e">Log</span>) <span style="color:#66d9ef">any</span> {
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">switch</span> <span style="color:#a6e22e">log</span>.<span style="color:#a6e22e">Type</span> {
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">case</span> <span style="color:#a6e22e">raft</span>.<span style="color:#a6e22e">LogCommand</span>:
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">sp</span> <span style="color:#a6e22e">setPayload</span>
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">json</span>.<span style="color:#a6e22e">Unmarshal</span>(<span style="color:#a6e22e">log</span>.<span style="color:#a6e22e">Data</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">sp</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">==</span> <span style="color:#66d9ef">nil</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">sp</span>.<span style="color:#a6e22e">Key</span> <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#34;&#34;</span> {
-</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">kf</span>.<span style="color:#a6e22e">store</span>.<span style="color:#a6e22e">Add</span>(<span style="color:#a6e22e">sp</span>.<span style="color:#a6e22e">Key</span>, <span style="color:#a6e22e">sp</span>.<span style="color:#a6e22e">Value</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
-</span></span><span style="display:flex;"><span>				<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;could not add to store: %s&#34;</span>, <span style="color:#a6e22e">err</span>)
-</span></span><span style="display:flex;"><span>			}
-</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>
-</span></span><span style="display:flex;"><span>		}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">var</span> <span style="color:#a6e22e">dp</span> <span style="color:#a6e22e">deletePayload</span>
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">json</span>.<span style="color:#a6e22e">Unmarshal</span>(<span style="color:#a6e22e">log</span>.<span style="color:#a6e22e">Data</span>, <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">dp</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">==</span> <span style="color:#66d9ef">nil</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">dp</span>.<span style="color:#a6e22e">Key</span> <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#34;&#34;</span> {
-</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">kf</span>.<span style="color:#a6e22e">store</span>.<span style="color:#a6e22e">Delete</span>(<span style="color:#a6e22e">dp</span>.<span style="color:#a6e22e">Key</span>); <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
-</span></span><span style="display:flex;"><span>				<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;could not delete from store: %s&#34;</span>, <span style="color:#a6e22e">err</span>)
-</span></span><span style="display:flex;"><span>			}
-</span></span><span style="display:flex;"><span>			<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>
-</span></span><span style="display:flex;"><span>		}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;could not parse payload: unknown operation type&#34;</span>)
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">default</span>:
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;unknown raft log type: %v&#34;</span>, <span style="color:#a6e22e">log</span>.<span style="color:#a6e22e">Type</span>)
-</span></span><span style="display:flex;"><span>	}
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>In the implementation of the apply function, the code simply takes the latest log, attempts to decode it from json into an existing struct and performs the appropriate operation on the store (set or delete), based on the type of struct it could be decoded into. Otherwise, it errors out.</p>
+<pre data-code-language="go" data-code-title=""><code><span class="syntax-type">func</span> (<span class="syntax-function">kf</span> <span class="syntax-keyword">*</span><span class="syntax-function">kvFsm</span>) <span class="syntax-function">Apply</span>(<span class="syntax-function">log</span> <span class="syntax-keyword">*</span><span class="syntax-function">raft</span>.<span class="syntax-function">Log</span>) <span class="syntax-type">any</span> {
+	<span class="syntax-type">switch</span> <span class="syntax-function">log</span>.<span class="syntax-function">Type</span> {
+	<span class="syntax-type">case</span> <span class="syntax-function">raft</span>.<span class="syntax-function">LogCommand</span>:
+		<span class="syntax-type">var</span> <span class="syntax-function">sp</span> <span class="syntax-function">setPayload</span>
+		<span class="syntax-type">if</span> <span class="syntax-function">err</span> <span class="syntax-keyword">:=</span> <span class="syntax-function">json</span>.<span class="syntax-function">Unmarshal</span>(<span class="syntax-function">log</span>.<span class="syntax-function">Data</span>, <span class="syntax-keyword">&amp;</span><span class="syntax-function">sp</span>); <span class="syntax-function">err</span> <span class="syntax-keyword">==</span> <span class="syntax-type">nil</span> <span class="syntax-keyword">&amp;&amp;</span> <span class="syntax-function">sp</span>.<span class="syntax-function">Key</span> <span class="syntax-keyword">!=</span> <span class="syntax-string">&#34;&#34;</span> {
+			<span class="syntax-type">if</span> <span class="syntax-function">err</span> <span class="syntax-keyword">:=</span> <span class="syntax-function">kf</span>.<span class="syntax-function">store</span>.<span class="syntax-function">Add</span>(<span class="syntax-function">sp</span>.<span class="syntax-function">Key</span>, <span class="syntax-function">sp</span>.<span class="syntax-function">Value</span>); <span class="syntax-function">err</span> <span class="syntax-keyword">!=</span> <span class="syntax-type">nil</span> {
+				<span class="syntax-type">return</span> <span class="syntax-function">fmt</span>.<span class="syntax-function">Errorf</span>(<span class="syntax-string">&#34;could not add to store: %s&#34;</span>, <span class="syntax-function">err</span>)
+			}
+			<span class="syntax-type">return</span> <span class="syntax-type">nil</span>
+		}
+
+		<span class="syntax-type">var</span> <span class="syntax-function">dp</span> <span class="syntax-function">deletePayload</span>
+		<span class="syntax-type">if</span> <span class="syntax-function">err</span> <span class="syntax-keyword">:=</span> <span class="syntax-function">json</span>.<span class="syntax-function">Unmarshal</span>(<span class="syntax-function">log</span>.<span class="syntax-function">Data</span>, <span class="syntax-keyword">&amp;</span><span class="syntax-function">dp</span>); <span class="syntax-function">err</span> <span class="syntax-keyword">==</span> <span class="syntax-type">nil</span> <span class="syntax-keyword">&amp;&amp;</span> <span class="syntax-function">dp</span>.<span class="syntax-function">Key</span> <span class="syntax-keyword">!=</span> <span class="syntax-string">&#34;&#34;</span> {
+			<span class="syntax-type">if</span> <span class="syntax-function">err</span> <span class="syntax-keyword">:=</span> <span class="syntax-function">kf</span>.<span class="syntax-function">store</span>.<span class="syntax-function">Delete</span>(<span class="syntax-function">dp</span>.<span class="syntax-function">Key</span>); <span class="syntax-function">err</span> <span class="syntax-keyword">!=</span> <span class="syntax-type">nil</span> {
+				<span class="syntax-type">return</span> <span class="syntax-function">fmt</span>.<span class="syntax-function">Errorf</span>(<span class="syntax-string">&#34;could not delete from store: %s&#34;</span>, <span class="syntax-function">err</span>)
+			}
+			<span class="syntax-type">return</span> <span class="syntax-type">nil</span>
+		}
+
+		<span class="syntax-type">return</span> <span class="syntax-function">fmt</span>.<span class="syntax-function">Errorf</span>(<span class="syntax-string">&#34;could not parse payload: unknown operation type&#34;</span>)
+	<span class="syntax-type">default</span>:
+		<span class="syntax-type">return</span> <span class="syntax-function">fmt</span>.<span class="syntax-function">Errorf</span>(<span class="syntax-string">&#34;unknown raft log type: %v&#34;</span>, <span class="syntax-function">log</span>.<span class="syntax-function">Type</span>)
+	}
+}
+</code></pre><p>In the implementation of the apply function, the code simply takes the latest log, attempts to decode it from json into an existing struct and performs the appropriate operation on the store (set or delete), based on the type of struct it could be decoded into. Otherwise, it errors out.</p>
 <p>Of note is the fact that Raft always has a singular leader node, hence its &ldquo;leader election&rdquo;. The core design principle of Raft is that only the leader node is allowed to make changes to the log. This means a regular node can&rsquo;t write to the log, only read from it. If the leader node fails, a new leader will be chosen automatically. This is done to ensure there is one singular point of authority on the log, which simplifies the system and achives strong consistency.</p>
 <h3 id="gossipgo">
   <code>gossip.go</code>
   
 </h3>
 <p>In the same manner as <code>raft.go</code> implements all the necessary RAFT logic, <code>gossip.go</code> implements all the necessary Gossip (Memberlist) logic. Memberlist provides a straightforward interface for joining a cluster. All thats needed is an instance of <code>*memberlist.Memberlist</code> for itself, and an address of at least one other already existing node. Joining is as easy as calling</p>
-<div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">8
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">gm</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">GossipManager</span>) <span style="color:#a6e22e">JoinCluster</span>(<span style="color:#a6e22e">existing</span> []<span style="color:#66d9ef">string</span>) <span style="color:#66d9ef">error</span> {
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">n</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">gm</span>.<span style="color:#a6e22e">memberlist</span>.<span style="color:#a6e22e">Join</span>(<span style="color:#a6e22e">existing</span>)
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">err</span>
-</span></span><span style="display:flex;"><span>	}
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;Successfully joined cluster. Connected to %d nodes\n&#34;</span>, <span style="color:#a6e22e">n</span>)
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#66d9ef">nil</span>
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>As Memberlist is responsible for discovery and dynamic cluster resizing, while Raft is responsible for consensus, and the two services use separate communication protocols, they ideally should be separate onto different ports. In my specific case, these ports stay constant however in a case where that is not the case (maybe you are running this on lo    calhost on two different terminals with completelyt different ports), the Gossip algorithm needs to pass some sort of a message to every other node when a connection happens. Memberlist provides a convenient interface that executes specific functions on every node if any member node performs a specific function. I used this to my advantage to pass around the Raft port to other nodes, and perform the Raft connection based on that info.</p>
-<div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">e</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">myEvents</span>) <span style="color:#a6e22e">NotifyJoin</span>(<span style="color:#a6e22e">n</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">memberlist</span>.<span style="color:#a6e22e">Node</span>) {
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">e</span>.<span style="color:#a6e22e">gm</span>.<span style="color:#a6e22e">AddRaftNode</span>(<span style="color:#a6e22e">n</span>)
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">gm</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">GossipManager</span>) <span style="color:#a6e22e">AddRaftNode</span>(<span style="color:#a6e22e">node</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">memberlist</span>.<span style="color:#a6e22e">Node</span>) {
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">gm</span>.<span style="color:#a6e22e">r</span> <span style="color:#f92672">==</span> <span style="color:#66d9ef">nil</span> {
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span>
-</span></span><span style="display:flex;"><span>	}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">gm</span>.<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">State</span>() <span style="color:#f92672">!=</span> <span style="color:#a6e22e">raft</span>.<span style="color:#a6e22e">Leader</span> {
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span>
-</span></span><span style="display:flex;"><span>	}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">newRaftPort</span> <span style="color:#f92672">:=</span> string(<span style="color:#a6e22e">node</span>.<span style="color:#a6e22e">Meta</span>)
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">raftAddr</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Sprintf</span>(<span style="color:#e6db74">&#34;%s:%s&#34;</span>, <span style="color:#a6e22e">node</span>.<span style="color:#a6e22e">Addr</span>.<span style="color:#a6e22e">String</span>(), <span style="color:#a6e22e">newRaftPort</span>)
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">gm</span>.<span style="color:#a6e22e">r</span>.<span style="color:#a6e22e">AddVoter</span>(<span style="color:#a6e22e">raft</span>.<span style="color:#a6e22e">ServerID</span>(<span style="color:#a6e22e">node</span>.<span style="color:#a6e22e">Name</span>), <span style="color:#a6e22e">raft</span>.<span style="color:#a6e22e">ServerAddress</span>(<span style="color:#a6e22e">raftAddr</span>), <span style="color:#ae81ff">0</span>, <span style="color:#ae81ff">0</span>).<span style="color:#a6e22e">Error</span>()
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
-</span></span><span style="display:flex;"><span>		panic(<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Sprintf</span>(<span style="color:#e6db74">&#34;failure when connecting to raft: %s&#34;</span>, <span style="color:#a6e22e">err</span>))
-</span></span><span style="display:flex;"><span>	}
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Printf</span>(<span style="color:#e6db74">&#34;Successfully connected RAFT!&#34;</span>)
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>NotifyJoin performs AddRaftNode on every node when a new Memberlist node joins a cluster. In Raft, only a leader node can add a new member. If the current node is the leader, then the raft port is extracted from the gossip nodes metadata, formatted, and used to add the node to Raft.</p>
+<pre data-code-language="go" data-code-title=""><code><span class="syntax-type">func</span> (<span class="syntax-function">gm</span> <span class="syntax-keyword">*</span><span class="syntax-function">GossipManager</span>) <span class="syntax-function">JoinCluster</span>(<span class="syntax-function">existing</span> []<span class="syntax-type">string</span>) <span class="syntax-type">error</span> {
+	<span class="syntax-function">n</span>, <span class="syntax-function">err</span> <span class="syntax-keyword">:=</span> <span class="syntax-function">gm</span>.<span class="syntax-function">memberlist</span>.<span class="syntax-function">Join</span>(<span class="syntax-function">existing</span>)
+	<span class="syntax-type">if</span> <span class="syntax-function">err</span> <span class="syntax-keyword">!=</span> <span class="syntax-type">nil</span> {
+		<span class="syntax-type">return</span> <span class="syntax-function">err</span>
+	}
+	<span class="syntax-function">fmt</span>.<span class="syntax-function">Printf</span>(<span class="syntax-string">&#34;Successfully joined cluster. Connected to %d nodes\n&#34;</span>, <span class="syntax-function">n</span>)
+	<span class="syntax-type">return</span> <span class="syntax-type">nil</span>
+}
+</code></pre><p>As Memberlist is responsible for discovery and dynamic cluster resizing, while Raft is responsible for consensus, and the two services use separate communication protocols, they ideally should be separate onto different ports. In my specific case, these ports stay constant however in a case where that is not the case (maybe you are running this on lo    calhost on two different terminals with completelyt different ports), the Gossip algorithm needs to pass some sort of a message to every other node when a connection happens. Memberlist provides a convenient interface that executes specific functions on every node if any member node performs a specific function. I used this to my advantage to pass around the Raft port to other nodes, and perform the Raft connection based on that info.</p>
+<pre data-code-language="go" data-code-title=""><code><span class="syntax-type">func</span> (<span class="syntax-function">e</span> <span class="syntax-keyword">*</span><span class="syntax-function">myEvents</span>) <span class="syntax-function">NotifyJoin</span>(<span class="syntax-function">n</span> <span class="syntax-keyword">*</span><span class="syntax-function">memberlist</span>.<span class="syntax-function">Node</span>) {
+	<span class="syntax-function">e</span>.<span class="syntax-function">gm</span>.<span class="syntax-function">AddRaftNode</span>(<span class="syntax-function">n</span>)
+}
+
+<span class="syntax-type">func</span> (<span class="syntax-function">gm</span> <span class="syntax-keyword">*</span><span class="syntax-function">GossipManager</span>) <span class="syntax-function">AddRaftNode</span>(<span class="syntax-function">node</span> <span class="syntax-keyword">*</span><span class="syntax-function">memberlist</span>.<span class="syntax-function">Node</span>) {
+	<span class="syntax-type">if</span> <span class="syntax-function">gm</span>.<span class="syntax-function">r</span> <span class="syntax-keyword">==</span> <span class="syntax-type">nil</span> {
+		<span class="syntax-type">return</span>
+	}
+
+	<span class="syntax-type">if</span> <span class="syntax-function">gm</span>.<span class="syntax-function">r</span>.<span class="syntax-function">State</span>() <span class="syntax-keyword">!=</span> <span class="syntax-function">raft</span>.<span class="syntax-function">Leader</span> {
+		<span class="syntax-type">return</span>
+	}
+
+	<span class="syntax-function">newRaftPort</span> <span class="syntax-keyword">:=</span> string(<span class="syntax-function">node</span>.<span class="syntax-function">Meta</span>)
+	<span class="syntax-function">raftAddr</span> <span class="syntax-keyword">:=</span> <span class="syntax-function">fmt</span>.<span class="syntax-function">Sprintf</span>(<span class="syntax-string">&#34;%s:%s&#34;</span>, <span class="syntax-function">node</span>.<span class="syntax-function">Addr</span>.<span class="syntax-function">String</span>(), <span class="syntax-function">newRaftPort</span>)
+	<span class="syntax-function">err</span> <span class="syntax-keyword">:=</span> <span class="syntax-function">gm</span>.<span class="syntax-function">r</span>.<span class="syntax-function">AddVoter</span>(<span class="syntax-function">raft</span>.<span class="syntax-function">ServerID</span>(<span class="syntax-function">node</span>.<span class="syntax-function">Name</span>), <span class="syntax-function">raft</span>.<span class="syntax-function">ServerAddress</span>(<span class="syntax-function">raftAddr</span>), <span class="syntax-number">0</span>, <span class="syntax-number">0</span>).<span class="syntax-function">Error</span>()
+	<span class="syntax-type">if</span> <span class="syntax-function">err</span> <span class="syntax-keyword">!=</span> <span class="syntax-type">nil</span> {
+		panic(<span class="syntax-function">fmt</span>.<span class="syntax-function">Sprintf</span>(<span class="syntax-string">&#34;failure when connecting to raft: %s&#34;</span>, <span class="syntax-function">err</span>))
+	}
+	<span class="syntax-function">fmt</span>.<span class="syntax-function">Printf</span>(<span class="syntax-string">&#34;Successfully connected RAFT!&#34;</span>)
+}
+</code></pre><p>NotifyJoin performs AddRaftNode on every node when a new Memberlist node joins a cluster. In Raft, only a leader node can add a new member. If the current node is the leader, then the raft port is extracted from the gossip nodes metadata, formatted, and used to add the node to Raft.</p>
 <p>I would note that this is not necessary when deploying in a K8s system. All the ports stay constant, only the host name changes, and K8s provides many ways to pass that around. This was done before I added K8s, when I was testing everything in multiple terminals with different CLI args to each node. It&rsquo;s a good learning exercise nontheless.</p>
 <h3 id="kubernetes-cluster-setup">
   Kubernetes Cluster setup
@@ -216,79 +145,31 @@ These instructions are specifically made for Mac. The only difference with windo
 <li>To simplify the instructions in the <a href="https://github.com/AlexG28/keyvalue/blob/main/README.md"  class="external-link" target="_blank" rel="noopener">README.md</a>, setup minikubes, connect it to its own version of docker, build the image, and deploy the <code>deployment.yaml</code> to minikubes.</li>
 <li>To check if you have Minikubes setup correctly, run <code>minikube docker-env</code> and it should show something like:</li>
 </ol>
-<div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">7
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>export DOCKER_TLS_VERIFY<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;1&#34;</span>
-</span></span><span style="display:flex;"><span>export DOCKER_HOST<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;tcp://192.168.105.15:2376&#34;</span>
-</span></span><span style="display:flex;"><span>export DOCKER_CERT_PATH<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;/Users/aleksandrgyumushyan/.minikube/certs&#34;</span>
-</span></span><span style="display:flex;"><span>export MINIKUBE_ACTIVE_DOCKERD<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;minikube&#34;</span>
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e"># To point your shell to minikube&#39;s docker-daemon, run:</span>
-</span></span><span style="display:flex;"><span><span style="color:#75715e"># eval $(minikube -p minikube docker-env)</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>Note the <code>DOCKER_HOST</code> value should look exactly like that, with slightly different port or IP values.</p>
+<pre data-code-language="bash" data-code-title=""><code>export DOCKER_TLS_VERIFY<span class="syntax-keyword">=</span><span class="syntax-string">&#34;1&#34;</span>
+export DOCKER_HOST<span class="syntax-keyword">=</span><span class="syntax-string">&#34;tcp://192.168.105.15:2376&#34;</span>
+export DOCKER_CERT_PATH<span class="syntax-keyword">=</span><span class="syntax-string">&#34;/Users/aleksandrgyumushyan/.minikube/certs&#34;</span>
+export MINIKUBE_ACTIVE_DOCKERD<span class="syntax-keyword">=</span><span class="syntax-string">&#34;minikube&#34;</span>
+
+<span class="syntax-comment"># To point your shell to minikube&#39;s docker-daemon, run:</span>
+<span class="syntax-comment"># eval $(minikube -p minikube docker-env)</span>
+</code></pre><p>Note the <code>DOCKER_HOST</code> value should look exactly like that, with slightly different port or IP values.</p>
 <p>A correctly deployed cluster should look something like this:</p>
-<div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">5
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>% keyvalue % kubectl get pods
-</span></span><span style="display:flex;"><span>NAME        READY   STATUS    RESTARTS   AGE
-</span></span><span style="display:flex;"><span>kvstore-0   1/1     Running   <span style="color:#ae81ff">0</span>          13m
-</span></span><span style="display:flex;"><span>kvstore-1   1/1     Running   <span style="color:#ae81ff">0</span>          13m
-</span></span><span style="display:flex;"><span>kvstore-2   1/1     Running   <span style="color:#ae81ff">0</span>          13m
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>You can get the IP addresses of each pod by running:</p>
-<div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>% minikube service kvstore-0-http --url
-</span></span><span style="display:flex;"><span>http://192.168.105.15:30080
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>And then test that the leader node can indeed Set and Get values like so:</p>
-<div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>% curl <span style="color:#e6db74">&#34;http://192.168.105.15:30080/Set/hello/world&#34;</span>
-</span></span><span style="display:flex;"><span>Set key <span style="color:#e6db74">&#39;hello&#39;</span> to value <span style="color:#e6db74">&#39;world&#39;</span>
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>Other nodes in the cluster should now have the same IP address but a different port such as 30081 or 30082.
+<pre data-code-language="bash" data-code-title=""><code>% keyvalue % kubectl get pods
+NAME        READY   STATUS    RESTARTS   AGE
+kvstore-0   1/1     Running   <span class="syntax-number">0</span>          13m
+kvstore-1   1/1     Running   <span class="syntax-number">0</span>          13m
+kvstore-2   1/1     Running   <span class="syntax-number">0</span>          13m
+</code></pre><p>You can get the IP addresses of each pod by running:</p>
+<pre data-code-language="bash" data-code-title=""><code>% minikube service kvstore-0-http --url
+http://192.168.105.15:30080
+</code></pre><p>And then test that the leader node can indeed Set and Get values like so:</p>
+<pre data-code-language="bash" data-code-title=""><code>% curl <span class="syntax-string">&#34;http://192.168.105.15:30080/Set/hello/world&#34;</span>
+Set key <span class="syntax-string">&#39;hello&#39;</span> to value <span class="syntax-string">&#39;world&#39;</span>
+</code></pre><p>Other nodes in the cluster should now have the same IP address but a different port such as 30081 or 30082.
 You can test out if indeed verything worked by running:</p>
-<div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>% curl <span style="color:#e6db74">&#34;http://192.168.105.15:30082/Get/hello&#34;</span>
-</span></span><span style="display:flex;"><span>world
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>If you got &ldquo;world&rdquo; as the output, then congratulations, we have successfully built a distributed key value store and deployed it on a local Kubernetes cluster!</p>
+<pre data-code-language="bash" data-code-title=""><code>% curl <span class="syntax-string">&#34;http://192.168.105.15:30082/Get/hello&#34;</span>
+world
+</code></pre><p>If you got &ldquo;world&rdquo; as the output, then congratulations, we have successfully built a distributed key value store and deployed it on a local Kubernetes cluster!</p>
 <p>Other useful commands here include:</p>
 <ul>
 <li><code>kubectl logs &lt;pod-name&gt;</code> to inspect the console output of an individual pod, which is very useful for debugging. Pod names are found when running <code>kubectl get pods</code></li>

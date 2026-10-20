@@ -22,58 +22,27 @@
   Code example
   
 </h4>
-<details class="code-collapse" open>
-    <summary>get function</summary>
-    <div class="collapse-content">
-        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-go" data-lang="go"><span style="display:flex;"><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">l</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Log</span>) <span style="color:#a6e22e">get</span>(<span style="color:#a6e22e">key</span> []<span style="color:#66d9ef">byte</span>) (<span style="color:#a6e22e">Entry</span>, <span style="color:#66d9ef">error</span>) {
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">l</span>.<span style="color:#a6e22e">stateMu</span>.<span style="color:#a6e22e">RLock</span>()
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">val</span>, <span style="color:#a6e22e">ok</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">l</span>.<span style="color:#a6e22e">mapping</span>[string(<span style="color:#a6e22e">key</span>)]
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">ok</span> {
-</span></span><span style="display:flex;"><span>		<span style="color:#a6e22e">l</span>.<span style="color:#a6e22e">stateMu</span>.<span style="color:#a6e22e">RUnlock</span>()
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">Entry</span>{}, <span style="color:#a6e22e">ErrKeyNotFound</span>
-</span></span><span style="display:flex;"><span>	}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">seg</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">l</span>.<span style="color:#a6e22e">files</span>[<span style="color:#a6e22e">val</span>.<span style="color:#a6e22e">File_id</span>]
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">fileLock</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">seg</span>.<span style="color:#a6e22e">mu</span>
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">fileLock</span>.<span style="color:#a6e22e">RLock</span>()
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">l</span>.<span style="color:#a6e22e">stateMu</span>.<span style="color:#a6e22e">RUnlock</span>()
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">entry</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">getFromDisk</span>(<span style="color:#a6e22e">seg</span>.<span style="color:#a6e22e">file</span>, <span style="color:#a6e22e">val</span>)
-</span></span><span style="display:flex;"><span>	<span style="color:#a6e22e">fileLock</span>.<span style="color:#a6e22e">RUnlock</span>()
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">if</span> <span style="color:#a6e22e">err</span> <span style="color:#f92672">!=</span> <span style="color:#66d9ef">nil</span> {
-</span></span><span style="display:flex;"><span>		<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">Entry</span>{}, <span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Errorf</span>(<span style="color:#e6db74">&#34;failed to read from disk: %w&#34;</span>, <span style="color:#a6e22e">err</span>)
-</span></span><span style="display:flex;"><span>	}
-</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">entry</span>, <span style="color:#66d9ef">nil</span>
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
-    </div>
-</details>
+<pre data-code-language="go" data-code-title="get function"><code><span class="syntax-type">func</span> (<span class="syntax-function">l</span> <span class="syntax-keyword">*</span><span class="syntax-function">Log</span>) <span class="syntax-function">get</span>(<span class="syntax-function">key</span> []<span class="syntax-type">byte</span>) (<span class="syntax-function">Entry</span>, <span class="syntax-type">error</span>) {
+	<span class="syntax-function">l</span>.<span class="syntax-function">stateMu</span>.<span class="syntax-function">RLock</span>()
+	<span class="syntax-function">val</span>, <span class="syntax-function">ok</span> <span class="syntax-keyword">:=</span> <span class="syntax-function">l</span>.<span class="syntax-function">mapping</span>[string(<span class="syntax-function">key</span>)]
+	<span class="syntax-type">if</span> !<span class="syntax-function">ok</span> {
+		<span class="syntax-function">l</span>.<span class="syntax-function">stateMu</span>.<span class="syntax-function">RUnlock</span>()
+		<span class="syntax-type">return</span> <span class="syntax-function">Entry</span>{}, <span class="syntax-function">ErrKeyNotFound</span>
+	}
+
+	<span class="syntax-function">seg</span> <span class="syntax-keyword">:=</span> <span class="syntax-keyword">&amp;</span><span class="syntax-function">l</span>.<span class="syntax-function">files</span>[<span class="syntax-function">val</span>.<span class="syntax-function">File_id</span>]
+	<span class="syntax-function">fileLock</span> <span class="syntax-keyword">:=</span> <span class="syntax-keyword">&amp;</span><span class="syntax-function">seg</span>.<span class="syntax-function">mu</span>
+	<span class="syntax-function">fileLock</span>.<span class="syntax-function">RLock</span>()
+	<span class="syntax-function">l</span>.<span class="syntax-function">stateMu</span>.<span class="syntax-function">RUnlock</span>()
+
+	<span class="syntax-function">entry</span>, <span class="syntax-function">err</span> <span class="syntax-keyword">:=</span> <span class="syntax-function">getFromDisk</span>(<span class="syntax-function">seg</span>.<span class="syntax-function">file</span>, <span class="syntax-function">val</span>)
+	<span class="syntax-function">fileLock</span>.<span class="syntax-function">RUnlock</span>()
+	<span class="syntax-type">if</span> <span class="syntax-function">err</span> <span class="syntax-keyword">!=</span> <span class="syntax-type">nil</span> {
+		<span class="syntax-type">return</span> <span class="syntax-function">Entry</span>{}, <span class="syntax-function">fmt</span>.<span class="syntax-function">Errorf</span>(<span class="syntax-string">&#34;failed to read from disk: %w&#34;</span>, <span class="syntax-function">err</span>)
+	}
+	<span class="syntax-type">return</span> <span class="syntax-function">entry</span>, <span class="syntax-type">nil</span>
+}
+</code></pre>
 
 <p>This code snippet above illustrates the two-domain lock system. To retrieve a value based on a key, <code>stateMu</code> is locked until the correct file is found. Once the file is found, its own lock (<code>fileLock</code>) is acquired and only then is <code>stateMu</code> released.</p>
 <h4 id="testing">

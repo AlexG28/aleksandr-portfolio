@@ -1,17 +1,8 @@
 <p>Recently, I came across the 1 Billion Row Challenge, and felt intrigued by the relatively simple challenge and the huge amount of opportunity for optimization and learning. The challenge is simple: given 1 billion rows of city names and temperatures in the following format:</p>
-<div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>Toronto;24.3
-</span></span><span style="display:flex;"><span>Yerevan;-4.3
-</span></span><span style="display:flex;"><span>New-York;12.4 
-</span></span></code></pre></td></tr></table>
-</div>
-</div><p>return every cities minimum, maximum and average temperature, sorted in the cities alphabetical order. The algorithmic simplicity masks the true challenge: to write a program that can do this operation efficiently. Even a simple algorithm scaled to a billion rows presents its own challenges. This post documents my journey in improving my solution, going from a naive solution that took two and a half minutes, down to a very optimized 10 seconds, a 15x boost in performance.</p>
+<pre data-code-language="text" data-code-title=""><code>Toronto;24.3
+Yerevan;-4.3
+New-York;12.4&#32;
+</code></pre><p>return every cities minimum, maximum and average temperature, sorted in the cities alphabetical order. The algorithmic simplicity masks the true challenge: to write a program that can do this operation efficiently. Even a simple algorithm scaled to a billion rows presents its own challenges. This post documents my journey in improving my solution, going from a naive solution that took two and a half minutes, down to a very optimized 10 seconds, a 15x boost in performance.</p>
 <p>I chose Zig for this challenge. Zig&rsquo;s characteristics—no hidden control flow or memory allocation, are exactly what I need for this project. It forces me to think about these concepts, and manually wire everything together. For the purposes of this challenge, I am also going to stick to only using one thread, both to keep things simple, and to ensure I am maximizing efficiency rather than throwing more resources at the problem.</p>
 <h2 id="iteration-1-naive-implementation">
   Iteration 1: Naive implementation
@@ -21,254 +12,125 @@
 <p>Once I built and tested the code on some provided unit tests, I was ready to run and benchmark the full 1 billion row file (14.8 gigabytes in size). I got the following result:</p>
 <p><code>45.87s user, 21.68s system, 42% CPU, 2:37.11 total</code>.</p>
 <p>Let’s examine the code to figure out what I did and why the time is so slow:</p>
-<details class="code-collapse" open>
-    <summary>Iteration 1: Naive Zig Implementation</summary>
-    <div class="collapse-content">
-        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">  1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">  2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">  3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">  4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">  5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">  6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">  7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">  8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">  9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 14
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 15
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 16
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 17
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 18
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 19
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 20
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 21
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 22
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 23
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 24
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 25
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 26
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 27
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 28
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 29
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 30
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 31
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 32
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 33
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 34
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 35
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 36
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 37
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 38
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 39
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 40
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 41
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 42
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 43
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 44
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 45
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 46
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 47
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 48
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 49
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 50
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 51
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 52
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 53
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 54
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 55
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 56
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 57
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 58
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 59
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 60
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 61
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 62
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 63
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 64
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 65
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 66
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 67
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 68
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 69
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 70
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 71
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 72
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 73
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 74
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 75
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 76
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 77
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 78
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 79
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 80
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 81
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 82
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 83
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 84
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 85
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 86
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 87
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 88
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 89
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 90
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 91
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 92
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 93
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 94
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 95
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 96
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 97
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 98
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 99
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">100
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">101
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">102
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">103
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">104
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">105
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">106
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">107
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">108
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">109
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">110
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">111
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">112
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">113
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">114
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">115
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">116
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">117
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">118
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zig" data-lang="zig"><span style="display:flex;"><span><span style="color:#66d9ef">const</span> std <span style="color:#f92672">=</span> @import(<span style="color:#e6db74">&#34;std&#34;</span>);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> measurement <span style="color:#f92672">=</span> <span style="color:#66d9ef">struct</span> {
-</span></span><span style="display:flex;"><span>    min<span style="color:#f92672">:</span> <span style="color:#66d9ef">f64</span>,
-</span></span><span style="display:flex;"><span>    sum<span style="color:#f92672">:</span> <span style="color:#66d9ef">f64</span>,
-</span></span><span style="display:flex;"><span>    max<span style="color:#f92672">:</span> <span style="color:#66d9ef">f64</span>,
-</span></span><span style="display:flex;"><span>    count<span style="color:#f92672">:</span> <span style="color:#66d9ef">i32</span>,
-</span></span><span style="display:flex;"><span>};
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">compareStrings</span>(
-</span></span><span style="display:flex;"><span>    _<span style="color:#f92672">:</span> <span style="color:#66d9ef">void</span>, <span style="color:#75715e">// The context parameter, often unused (void)
-</span></span></span><span style="display:flex;"><span>    lhs<span style="color:#f92672">:</span> []<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">u8</span>, <span style="color:#75715e">// Left-hand side string slice
-</span></span></span><span style="display:flex;"><span>    rhs<span style="color:#f92672">:</span> []<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">u8</span>, <span style="color:#75715e">// Right-hand side string slice
-</span></span></span><span style="display:flex;"><span>) <span style="color:#66d9ef">bool</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// std.mem.order returns an enum (lt, gt, eq).
-</span></span></span><span style="display:flex;"><span>    <span style="color:#75715e">// The sort function expects a boolean result for &#39;less than&#39;.
-</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> std.mem.<span style="color:#a6e22e">order</span>(<span style="color:#66d9ef">u8</span>, lhs, rhs) <span style="color:#f92672">==</span> .lt;
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">parse_measurements</span>(contents<span style="color:#f92672">:</span> []<span style="color:#66d9ef">u8</span>, allocator<span style="color:#f92672">:</span> std.mem.Allocator) std.<span style="color:#a6e22e">StringHashMap</span>(measurement) {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> measurements <span style="color:#f92672">=</span> std.<span style="color:#a6e22e">StringHashMap</span>(measurement).<span style="color:#a6e22e">init</span>(allocator);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> iter <span style="color:#f92672">=</span> std.mem.<span style="color:#a6e22e">splitSequence</span>(<span style="color:#66d9ef">u8</span>, contents, <span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (iter.<span style="color:#a6e22e">next</span>()) <span style="color:#f92672">|</span>line<span style="color:#f92672">|</span> {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">var</span> elements <span style="color:#f92672">=</span> std.mem.<span style="color:#a6e22e">splitSequence</span>(<span style="color:#66d9ef">u8</span>, line, <span style="color:#e6db74">&#34;;&#34;</span>);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> city <span style="color:#f92672">=</span> elements.<span style="color:#a6e22e">next</span>() <span style="color:#66d9ef">orelse</span> <span style="color:#66d9ef">continue</span>;
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> tempstr <span style="color:#f92672">=</span> elements.<span style="color:#a6e22e">next</span>() <span style="color:#66d9ef">orelse</span> <span style="color:#66d9ef">continue</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> temp <span style="color:#f92672">=</span> std.fmt.<span style="color:#a6e22e">parseFloat</span>(<span style="color:#66d9ef">f64</span>, tempstr) <span style="color:#66d9ef">catch</span> <span style="color:#f92672">|</span>err<span style="color:#f92672">|</span> {
-</span></span><span style="display:flex;"><span>            std.debug.<span style="color:#a6e22e">print</span>(<span style="color:#e6db74">&#34;failed to parse this value: {s}, error: {}</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, .{ tempstr, err });
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">continue</span>;
-</span></span><span style="display:flex;"><span>        };
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (measurements.<span style="color:#a6e22e">contains</span>(city)) {
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">var</span> prev <span style="color:#f92672">=</span> measurements.<span style="color:#a6e22e">get</span>(city).<span style="color:#f92672">?</span>;
-</span></span><span style="display:flex;"><span>            prev.count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>            prev.sum <span style="color:#f92672">+=</span> temp;
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span> (temp <span style="color:#f92672">&lt;</span> prev.min) prev.min <span style="color:#f92672">=</span> temp;
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span> (temp <span style="color:#f92672">&gt;</span> prev.max) prev.max <span style="color:#f92672">=</span> temp;
-</span></span><span style="display:flex;"><span>            measurements.<span style="color:#a6e22e">put</span>(city, prev) <span style="color:#66d9ef">catch</span> {
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">continue</span>;
-</span></span><span style="display:flex;"><span>            };
-</span></span><span style="display:flex;"><span>        } <span style="color:#66d9ef">else</span> {
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">const</span> newMeasurement <span style="color:#f92672">=</span> measurement{
-</span></span><span style="display:flex;"><span>                .count <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>,
-</span></span><span style="display:flex;"><span>                .max <span style="color:#f92672">=</span> temp,
-</span></span><span style="display:flex;"><span>                .min <span style="color:#f92672">=</span> temp,
-</span></span><span style="display:flex;"><span>                .sum <span style="color:#f92672">=</span> temp,
-</span></span><span style="display:flex;"><span>            };
-</span></span><span style="display:flex;"><span>            measurements.<span style="color:#a6e22e">put</span>(city, newMeasurement) <span style="color:#66d9ef">catch</span> {
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">continue</span>;
-</span></span><span style="display:flex;"><span>            };
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> measurements;
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">print_measurements</span>(measurements<span style="color:#f92672">:</span> std.<span style="color:#a6e22e">StringHashMap</span>(measurement), allocator<span style="color:#f92672">:</span> std.mem.Allocator) <span style="color:#f92672">!</span><span style="color:#66d9ef">void</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> keys <span style="color:#f92672">=</span> std.<span style="color:#a6e22e">ArrayList</span>([]<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">u8</span>).empty;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">defer</span> keys.<span style="color:#a6e22e">deinit</span>(allocator);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> iter <span style="color:#f92672">=</span> measurements.<span style="color:#a6e22e">keyIterator</span>();
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (iter.<span style="color:#a6e22e">next</span>()) <span style="color:#f92672">|</span>entry<span style="color:#f92672">|</span> {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">try</span> keys.<span style="color:#a6e22e">append</span>(allocator, entry.<span style="color:#f92672">*</span>);
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    std.mem.<span style="color:#a6e22e">sortUnstable</span>([]<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">u8</span>, keys.items, {}, compareStrings);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> stdout_buffer<span style="color:#f92672">:</span> [<span style="color:#ae81ff">1024</span>]<span style="color:#66d9ef">u8</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">undefined</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> stdout_writer <span style="color:#f92672">=</span> std.fs.File.<span style="color:#a6e22e">stdout</span>().<span style="color:#a6e22e">writer</span>(<span style="color:#f92672">&amp;</span>stdout_buffer);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> stdout <span style="color:#f92672">=</span> <span style="color:#f92672">&amp;</span>stdout_writer.interface;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span> stdout.<span style="color:#a6e22e">print</span>(<span style="color:#e6db74">&#34;{{&#34;</span>, .{});
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">for</span> (keys.items, <span style="color:#ae81ff">0</span>..) <span style="color:#f92672">|</span>key, i<span style="color:#f92672">|</span> {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> meas <span style="color:#f92672">=</span> measurements.<span style="color:#a6e22e">get</span>(key).<span style="color:#f92672">?</span>;
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> mean <span style="color:#f92672">=</span> meas.sum <span style="color:#f92672">/</span> @as(<span style="color:#66d9ef">f64</span>, @floatFromInt(meas.count));
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> eps<span style="color:#f92672">:</span> <span style="color:#66d9ef">f64</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">1e-12</span>;
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> rounded_mean <span style="color:#f92672">=</span> @round(mean <span style="color:#f92672">*</span> <span style="color:#ae81ff">10.0</span> <span style="color:#f92672">+</span> (<span style="color:#66d9ef">if</span> (mean <span style="color:#f92672">&gt;=</span> <span style="color:#ae81ff">0</span>) eps <span style="color:#66d9ef">else</span> <span style="color:#f92672">-</span>eps)) <span style="color:#f92672">/</span> <span style="color:#ae81ff">10.0</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">try</span> stdout.<span style="color:#a6e22e">print</span>(<span style="color:#e6db74">&#34;{s}={d:.1}/{d:.1}/{d:.1}&#34;</span>, .{ key, meas.min, rounded_mean, meas.max });
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (i <span style="color:#f92672">&lt;</span> keys.items.len <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>) {
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">try</span> stdout.<span style="color:#a6e22e">print</span>(<span style="color:#e6db74">&#34;, &#34;</span>, .{});
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span> stdout.<span style="color:#a6e22e">print</span>(<span style="color:#e6db74">&#34;}}</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, .{});
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span> stdout.<span style="color:#a6e22e">flush</span>();
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">open_file</span>(path<span style="color:#f92672">:</span> []<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">u8</span>, allocator<span style="color:#f92672">:</span> std.mem.Allocator) <span style="color:#f92672">!</span>[]<span style="color:#66d9ef">u8</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> file <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> std.fs.<span style="color:#a6e22e">cwd</span>().<span style="color:#a6e22e">openFile</span>(path, .{ .mode <span style="color:#f92672">=</span> .read_only });
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">defer</span> file.<span style="color:#a6e22e">close</span>();
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> contents <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> file.<span style="color:#a6e22e">readToEndAlloc</span>(allocator, std.math.<span style="color:#a6e22e">maxInt</span>(<span style="color:#66d9ef">usize</span>));
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> contents;
-</span></span><span style="display:flex;"><span>}
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">main</span>() <span style="color:#f92672">!</span><span style="color:#66d9ef">void</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> allocator <span style="color:#f92672">=</span> std.heap.page_allocator;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> args <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> std.process.<span style="color:#a6e22e">argsAlloc</span>(allocator);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">defer</span> std.process.<span style="color:#a6e22e">argsFree</span>(allocator, args);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (args.len <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">2</span>) {
-</span></span><span style="display:flex;"><span>        std.debug.<span style="color:#a6e22e">print</span>(<span style="color:#e6db74">&#34;Usage: {s} &lt;input_file&gt;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">&#34;</span>, .{args[<span style="color:#ae81ff">0</span>]});
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">error</span>.InvalidArguments;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> input_file <span style="color:#f92672">=</span> args[<span style="color:#ae81ff">1</span>];
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> contents <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> <span style="color:#a6e22e">open_file</span>(input_file, allocator);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">defer</span> allocator.<span style="color:#a6e22e">free</span>(contents);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> measurement2 <span style="color:#f92672">=</span> <span style="color:#a6e22e">parse_measurements</span>(contents, allocator);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">print_measurements</span>(measurement2, allocator) <span style="color:#66d9ef">catch</span> {};
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
-    </div>
-</details>
+<pre data-code-language="zig" data-code-title="Iteration 1: Naive Zig Implementation"><code><span class="syntax-type">const</span> std <span class="syntax-keyword">=</span> @import(<span class="syntax-string">&#34;std&#34;</span>);
+
+<span class="syntax-type">const</span> measurement <span class="syntax-keyword">=</span> <span class="syntax-type">struct</span> {
+    min<span class="syntax-keyword">:</span> <span class="syntax-type">f64</span>,
+    sum<span class="syntax-keyword">:</span> <span class="syntax-type">f64</span>,
+    max<span class="syntax-keyword">:</span> <span class="syntax-type">f64</span>,
+    count<span class="syntax-keyword">:</span> <span class="syntax-type">i32</span>,
+};
+
+<span class="syntax-type">fn</span> <span class="syntax-function">compareStrings</span>(
+    _<span class="syntax-keyword">:</span> <span class="syntax-type">void</span>, <span class="syntax-comment">// The context parameter, often unused (void)
+</span>    lhs<span class="syntax-keyword">:</span> []<span class="syntax-type">const</span> <span class="syntax-type">u8</span>, <span class="syntax-comment">// Left-hand side string slice
+</span>    rhs<span class="syntax-keyword">:</span> []<span class="syntax-type">const</span> <span class="syntax-type">u8</span>, <span class="syntax-comment">// Right-hand side string slice
+</span>) <span class="syntax-type">bool</span> {
+    <span class="syntax-comment">// std.mem.order returns an enum (lt, gt, eq).
+</span>    <span class="syntax-comment">// The sort function expects a boolean result for &#39;less than&#39;.
+</span>    <span class="syntax-type">return</span> std.mem.<span class="syntax-function">order</span>(<span class="syntax-type">u8</span>, lhs, rhs) <span class="syntax-keyword">==</span> .lt;
+}
+
+<span class="syntax-type">fn</span> <span class="syntax-function">parse_measurements</span>(contents<span class="syntax-keyword">:</span> []<span class="syntax-type">u8</span>, allocator<span class="syntax-keyword">:</span> std.mem.Allocator) std.<span class="syntax-function">StringHashMap</span>(measurement) {
+    <span class="syntax-type">var</span> measurements <span class="syntax-keyword">=</span> std.<span class="syntax-function">StringHashMap</span>(measurement).<span class="syntax-function">init</span>(allocator);
+
+    <span class="syntax-type">var</span> iter <span class="syntax-keyword">=</span> std.mem.<span class="syntax-function">splitSequence</span>(<span class="syntax-type">u8</span>, contents, <span class="syntax-string">&#34;</span><span class="syntax-number">\n</span><span class="syntax-string">&#34;</span>);
+
+    <span class="syntax-type">while</span> (iter.<span class="syntax-function">next</span>()) <span class="syntax-keyword">|</span>line<span class="syntax-keyword">|</span> {
+        <span class="syntax-type">var</span> elements <span class="syntax-keyword">=</span> std.mem.<span class="syntax-function">splitSequence</span>(<span class="syntax-type">u8</span>, line, <span class="syntax-string">&#34;;&#34;</span>);
+        <span class="syntax-type">const</span> city <span class="syntax-keyword">=</span> elements.<span class="syntax-function">next</span>() <span class="syntax-type">orelse</span> <span class="syntax-type">continue</span>;
+        <span class="syntax-type">const</span> tempstr <span class="syntax-keyword">=</span> elements.<span class="syntax-function">next</span>() <span class="syntax-type">orelse</span> <span class="syntax-type">continue</span>;
+
+        <span class="syntax-type">const</span> temp <span class="syntax-keyword">=</span> std.fmt.<span class="syntax-function">parseFloat</span>(<span class="syntax-type">f64</span>, tempstr) <span class="syntax-type">catch</span> <span class="syntax-keyword">|</span>err<span class="syntax-keyword">|</span> {
+            std.debug.<span class="syntax-function">print</span>(<span class="syntax-string">&#34;failed to parse this value: {s}, error: {}</span><span class="syntax-number">\n</span><span class="syntax-string">&#34;</span>, .{ tempstr, err });
+            <span class="syntax-type">continue</span>;
+        };
+
+        <span class="syntax-type">if</span> (measurements.<span class="syntax-function">contains</span>(city)) {
+            <span class="syntax-type">var</span> prev <span class="syntax-keyword">=</span> measurements.<span class="syntax-function">get</span>(city).<span class="syntax-keyword">?</span>;
+            prev.count <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>;
+            prev.sum <span class="syntax-keyword">+=</span> temp;
+            <span class="syntax-type">if</span> (temp <span class="syntax-keyword">&lt;</span> prev.min) prev.min <span class="syntax-keyword">=</span> temp;
+            <span class="syntax-type">if</span> (temp <span class="syntax-keyword">&gt;</span> prev.max) prev.max <span class="syntax-keyword">=</span> temp;
+            measurements.<span class="syntax-function">put</span>(city, prev) <span class="syntax-type">catch</span> {
+                <span class="syntax-type">continue</span>;
+            };
+        } <span class="syntax-type">else</span> {
+            <span class="syntax-type">const</span> newMeasurement <span class="syntax-keyword">=</span> measurement{
+                .count <span class="syntax-keyword">=</span> <span class="syntax-number">1</span>,
+                .max <span class="syntax-keyword">=</span> temp,
+                .min <span class="syntax-keyword">=</span> temp,
+                .sum <span class="syntax-keyword">=</span> temp,
+            };
+            measurements.<span class="syntax-function">put</span>(city, newMeasurement) <span class="syntax-type">catch</span> {
+                <span class="syntax-type">continue</span>;
+            };
+        }
+    }
+
+    <span class="syntax-type">return</span> measurements;
+}
+
+<span class="syntax-type">fn</span> <span class="syntax-function">print_measurements</span>(measurements<span class="syntax-keyword">:</span> std.<span class="syntax-function">StringHashMap</span>(measurement), allocator<span class="syntax-keyword">:</span> std.mem.Allocator) <span class="syntax-keyword">!</span><span class="syntax-type">void</span> {
+    <span class="syntax-type">var</span> keys <span class="syntax-keyword">=</span> std.<span class="syntax-function">ArrayList</span>([]<span class="syntax-type">const</span> <span class="syntax-type">u8</span>).empty;
+    <span class="syntax-type">defer</span> keys.<span class="syntax-function">deinit</span>(allocator);
+
+    <span class="syntax-type">var</span> iter <span class="syntax-keyword">=</span> measurements.<span class="syntax-function">keyIterator</span>();
+    <span class="syntax-type">while</span> (iter.<span class="syntax-function">next</span>()) <span class="syntax-keyword">|</span>entry<span class="syntax-keyword">|</span> {
+        <span class="syntax-type">try</span> keys.<span class="syntax-function">append</span>(allocator, entry.<span class="syntax-keyword">*</span>);
+    }
+    std.mem.<span class="syntax-function">sortUnstable</span>([]<span class="syntax-type">const</span> <span class="syntax-type">u8</span>, keys.items, {}, compareStrings);
+
+    <span class="syntax-type">var</span> stdout_buffer<span class="syntax-keyword">:</span> [<span class="syntax-number">1024</span>]<span class="syntax-type">u8</span> <span class="syntax-keyword">=</span> <span class="syntax-type">undefined</span>;
+    <span class="syntax-type">var</span> stdout_writer <span class="syntax-keyword">=</span> std.fs.File.<span class="syntax-function">stdout</span>().<span class="syntax-function">writer</span>(<span class="syntax-keyword">&amp;</span>stdout_buffer);
+    <span class="syntax-type">const</span> stdout <span class="syntax-keyword">=</span> <span class="syntax-keyword">&amp;</span>stdout_writer.interface;
+
+    <span class="syntax-type">try</span> stdout.<span class="syntax-function">print</span>(<span class="syntax-string">&#34;{{&#34;</span>, .{});
+
+    <span class="syntax-type">for</span> (keys.items, <span class="syntax-number">0</span>..) <span class="syntax-keyword">|</span>key, i<span class="syntax-keyword">|</span> {
+        <span class="syntax-type">const</span> meas <span class="syntax-keyword">=</span> measurements.<span class="syntax-function">get</span>(key).<span class="syntax-keyword">?</span>;
+        <span class="syntax-type">const</span> mean <span class="syntax-keyword">=</span> meas.sum <span class="syntax-keyword">/</span> @as(<span class="syntax-type">f64</span>, @floatFromInt(meas.count));
+
+        <span class="syntax-type">const</span> eps<span class="syntax-keyword">:</span> <span class="syntax-type">f64</span> <span class="syntax-keyword">=</span> <span class="syntax-number">1e-12</span>;
+        <span class="syntax-type">const</span> rounded_mean <span class="syntax-keyword">=</span> @round(mean <span class="syntax-keyword">*</span> <span class="syntax-number">10.0</span> <span class="syntax-keyword">+</span> (<span class="syntax-type">if</span> (mean <span class="syntax-keyword">&gt;=</span> <span class="syntax-number">0</span>) eps <span class="syntax-type">else</span> <span class="syntax-keyword">-</span>eps)) <span class="syntax-keyword">/</span> <span class="syntax-number">10.0</span>;
+
+        <span class="syntax-type">try</span> stdout.<span class="syntax-function">print</span>(<span class="syntax-string">&#34;{s}={d:.1}/{d:.1}/{d:.1}&#34;</span>, .{ key, meas.min, rounded_mean, meas.max });
+        <span class="syntax-type">if</span> (i <span class="syntax-keyword">&lt;</span> keys.items.len <span class="syntax-keyword">-</span> <span class="syntax-number">1</span>) {
+            <span class="syntax-type">try</span> stdout.<span class="syntax-function">print</span>(<span class="syntax-string">&#34;, &#34;</span>, .{});
+        }
+    }
+    <span class="syntax-type">try</span> stdout.<span class="syntax-function">print</span>(<span class="syntax-string">&#34;}}</span><span class="syntax-number">\n</span><span class="syntax-string">&#34;</span>, .{});
+    <span class="syntax-type">try</span> stdout.<span class="syntax-function">flush</span>();
+}
+
+<span class="syntax-type">fn</span> <span class="syntax-function">open_file</span>(path<span class="syntax-keyword">:</span> []<span class="syntax-type">const</span> <span class="syntax-type">u8</span>, allocator<span class="syntax-keyword">:</span> std.mem.Allocator) <span class="syntax-keyword">!</span>[]<span class="syntax-type">u8</span> {
+    <span class="syntax-type">var</span> file <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> std.fs.<span class="syntax-function">cwd</span>().<span class="syntax-function">openFile</span>(path, .{ .mode <span class="syntax-keyword">=</span> .read_only });
+    <span class="syntax-type">defer</span> file.<span class="syntax-function">close</span>();
+
+    <span class="syntax-type">const</span> contents <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> file.<span class="syntax-function">readToEndAlloc</span>(allocator, std.math.<span class="syntax-function">maxInt</span>(<span class="syntax-type">usize</span>));
+
+    <span class="syntax-type">return</span> contents;
+}
+
+<span class="syntax-type">pub</span> <span class="syntax-type">fn</span> <span class="syntax-function">main</span>() <span class="syntax-keyword">!</span><span class="syntax-type">void</span> {
+    <span class="syntax-type">const</span> allocator <span class="syntax-keyword">=</span> std.heap.page_allocator;
+
+    <span class="syntax-type">const</span> args <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> std.process.<span class="syntax-function">argsAlloc</span>(allocator);
+    <span class="syntax-type">defer</span> std.process.<span class="syntax-function">argsFree</span>(allocator, args);
+    <span class="syntax-type">if</span> (args.len <span class="syntax-keyword">&lt;</span> <span class="syntax-number">2</span>) {
+        std.debug.<span class="syntax-function">print</span>(<span class="syntax-string">&#34;Usage: {s} &lt;input_file&gt;</span><span class="syntax-number">\n</span><span class="syntax-string">&#34;</span>, .{args[<span class="syntax-number">0</span>]});
+        <span class="syntax-type">return</span> <span class="syntax-type">error</span>.InvalidArguments;
+    }
+    <span class="syntax-type">const</span> input_file <span class="syntax-keyword">=</span> args[<span class="syntax-number">1</span>];
+
+    <span class="syntax-type">const</span> contents <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> <span class="syntax-function">open_file</span>(input_file, allocator);
+    <span class="syntax-type">defer</span> allocator.<span class="syntax-function">free</span>(contents);
+
+    <span class="syntax-type">const</span> measurement2 <span class="syntax-keyword">=</span> <span class="syntax-function">parse_measurements</span>(contents, allocator);
+
+    <span class="syntax-function">print_measurements</span>(measurement2, allocator) <span class="syntax-type">catch</span> {};
+}
+</code></pre>
 
 <p>The flow of the program is very simple. Open the file, read its contents into a byte array with an allocator, and parse it. The parser splits this giant byte array by “\n” and each subarray by “;”. I then use the city as a key to a hashmap, where the value is a struct, containing min, max, sum and count. At the end I get all the keys, sort them, and print their corresponding values.</p>
 <p>Examining the time, the program spends the vast majority of its time waiting on the disk to open the file, so much so that the CPU is only actually doing something for 45 seconds out of the 2.5 minutes. This is very inefficient.</p>
@@ -280,42 +142,19 @@
 <p>In a conventional file read, the OS fetches chunks from the disk into memory, but they first have to go into the kernel space, and only then copied to user space.</p>
 <p>In contrast, memory mapping (mmap) works by virtually mapping the disk address space of the file you want to read into main memory. Reading a byte from a page not in memory triggers a page fault and the OS goes to the disk (as opposed to a swap file in a regular demand paging page fault) to fetch it. This avoids that &ldquo;copy&rdquo; between the kernel and user space in a normal file read.</p>
 <p>Adding the following code:</p>
-<details class="code-collapse" open>
-    <summary>Iteration 2: Memory Mapping</summary>
-    <div class="collapse-content">
-        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zig" data-lang="zig"><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">open_file</span>(path<span style="color:#f92672">:</span> []<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">u8</span>) <span style="color:#f92672">!</span>[]<span style="color:#66d9ef">u8</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> file <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> std.fs.<span style="color:#a6e22e">cwd</span>().<span style="color:#a6e22e">openFile</span>(path, .{ .mode <span style="color:#f92672">=</span> .read_only });
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">defer</span> file.<span style="color:#a6e22e">close</span>();
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> file_size <span style="color:#f92672">=</span> (<span style="color:#66d9ef">try</span> file.<span style="color:#a6e22e">stat</span>()).size;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> contents <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> std.posix.<span style="color:#a6e22e">mmap</span>(<span style="color:#66d9ef">null</span>, file_size, std.posix.PROT.READ, .{ .TYPE <span style="color:#f92672">=</span> .PRIVATE }, file.handle, <span style="color:#ae81ff">0</span>);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span> std.posix.<span style="color:#a6e22e">madvise</span>(contents.ptr, contents.len, std.posix.MADV.SEQUENTIAL);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> contents;
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
-    </div>
-</details>
+<pre data-code-language="zig" data-code-title="Iteration 2: Memory Mapping"><code><span class="syntax-type">fn</span> <span class="syntax-function">open_file</span>(path<span class="syntax-keyword">:</span> []<span class="syntax-type">const</span> <span class="syntax-type">u8</span>) <span class="syntax-keyword">!</span>[]<span class="syntax-type">u8</span> {
+    <span class="syntax-type">const</span> file <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> std.fs.<span class="syntax-function">cwd</span>().<span class="syntax-function">openFile</span>(path, .{ .mode <span class="syntax-keyword">=</span> .read_only });
+    <span class="syntax-type">defer</span> file.<span class="syntax-function">close</span>();
+
+    <span class="syntax-type">const</span> file_size <span class="syntax-keyword">=</span> (<span class="syntax-type">try</span> file.<span class="syntax-function">stat</span>()).size;
+
+    <span class="syntax-type">const</span> contents <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> std.posix.<span class="syntax-function">mmap</span>(<span class="syntax-type">null</span>, file_size, std.posix.PROT.READ, .{ .TYPE <span class="syntax-keyword">=</span> .PRIVATE }, file.handle, <span class="syntax-number">0</span>);
+
+    <span class="syntax-type">try</span> std.posix.<span class="syntax-function">madvise</span>(contents.ptr, contents.len, std.posix.MADV.SEQUENTIAL);
+
+    <span class="syntax-type">return</span> contents;
+}
+</code></pre>
 
 <p>Yields us enormous performance gains:</p>
 <p><code>43.51s user, 2.79s system, 75% CPU, 1:01.57 total</code></p>
@@ -334,116 +173,56 @@
 <p>To fix the delimiter bottleneck: keep a start and curr index. iterate over every byte individually, and check when curr hits a delimiter. I then know if arr[start..curr] is either a city or a temp.</p>
 <p>I can completely eliminate parse_float. By default, this func has to check for many edge cases which I know will never be hit. Every temp in the dataset is between -99.9 and 99.9. I can speed things up significantly by manually accumulating every additional digit into a temporary integer, and then dividing by 10 to get the true float temperature.</p>
 <p>Lastly, I am needlessly making two calls to the hashmap, one to check if an item exists, and another to fill/update it. Zig has a built-in function called getOrPut() which eliminates this double hash. The new code looks something like this:</p>
-<details class="code-collapse" open>
-    <summary>Iteration 3: Manual Parsing &amp; getOrPut</summary>
-    <div class="collapse-content">
-        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">29
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">30
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">31
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">32
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">33
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">34
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">35
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">36
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">37
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">38
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">39
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">40
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">41
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">42
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">43
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">44
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">45
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">46
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">47
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">48
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">49
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zig" data-lang="zig"><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">parse_measurements</span>(contents<span style="color:#f92672">:</span> []<span style="color:#66d9ef">u8</span>, allocator<span style="color:#f92672">:</span> std.mem.Allocator) <span style="color:#f92672">!</span>std.<span style="color:#a6e22e">StringHashMap</span>(measurement) {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> measurements <span style="color:#f92672">=</span> std.<span style="color:#a6e22e">StringHashMap</span>(measurement).<span style="color:#a6e22e">init</span>(allocator);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> i<span style="color:#f92672">:</span> <span style="color:#66d9ef">usize</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (i <span style="color:#f92672">&lt;</span> contents.len) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> start <span style="color:#f92672">=</span> i;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span> (contents[i] <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#39;;&#39;</span>) <span style="color:#f92672">:</span> (i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>) {}
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> city <span style="color:#f92672">=</span> contents[start..i];
-</span></span><span style="display:flex;"><span>        i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">var</span> temp<span style="color:#f92672">:</span> <span style="color:#66d9ef">i32</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">var</span> negative<span style="color:#f92672">:</span> <span style="color:#66d9ef">bool</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">false</span>;
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (contents[i] <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;-&#39;</span>) {
-</span></span><span style="display:flex;"><span>            negative <span style="color:#f92672">=</span> <span style="color:#66d9ef">true</span>;
-</span></span><span style="display:flex;"><span>            i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span> (contents[i] <span style="color:#f92672">!=</span> <span style="color:#ae81ff">&#39;\n&#39;</span>) <span style="color:#f92672">:</span> (i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>) {
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span> (contents[i] <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;.&#39;</span>) <span style="color:#66d9ef">continue</span>;
-</span></span><span style="display:flex;"><span>            temp <span style="color:#f92672">=</span> temp <span style="color:#f92672">*</span> <span style="color:#ae81ff">10</span>;
-</span></span><span style="display:flex;"><span>            temp <span style="color:#f92672">+=</span> @as(<span style="color:#66d9ef">i32</span>, @intCast(contents[i] <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;0&#39;</span>));
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (negative) {
-</span></span><span style="display:flex;"><span>            temp <span style="color:#f92672">=</span> temp <span style="color:#f92672">*</span> <span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>        i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> temp2 <span style="color:#f92672">=</span> @as(<span style="color:#66d9ef">f64</span>, @floatFromInt(temp)) <span style="color:#f92672">/</span> <span style="color:#ae81ff">10.0</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> elem <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> measurements.<span style="color:#a6e22e">getOrPut</span>(city);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>elem.found_existing) {
-</span></span><span style="display:flex;"><span>            elem.value_ptr.<span style="color:#f92672">*</span> <span style="color:#f92672">=</span> .{
-</span></span><span style="display:flex;"><span>                .count <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>,
-</span></span><span style="display:flex;"><span>                .max <span style="color:#f92672">=</span> temp2,
-</span></span><span style="display:flex;"><span>                .min <span style="color:#f92672">=</span> temp2,
-</span></span><span style="display:flex;"><span>                .sum <span style="color:#f92672">=</span> temp2,
-</span></span><span style="display:flex;"><span>            };
-</span></span><span style="display:flex;"><span>        } <span style="color:#66d9ef">else</span> {
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">const</span> m <span style="color:#f92672">=</span> elem.value_ptr;
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span> (temp2 <span style="color:#f92672">&lt;</span> m.min) m.min <span style="color:#f92672">=</span> temp2;
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span> (temp2 <span style="color:#f92672">&gt;</span> m.max) m.max <span style="color:#f92672">=</span> temp2;
-</span></span><span style="display:flex;"><span>            m.sum <span style="color:#f92672">+=</span> temp2;
-</span></span><span style="display:flex;"><span>            m.count <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> measurements;
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
-    </div>
-</details>
+<pre data-code-language="zig" data-code-title="Iteration 3: Manual Parsing &amp; getOrPut"><code><span class="syntax-type">fn</span> <span class="syntax-function">parse_measurements</span>(contents<span class="syntax-keyword">:</span> []<span class="syntax-type">u8</span>, allocator<span class="syntax-keyword">:</span> std.mem.Allocator) <span class="syntax-keyword">!</span>std.<span class="syntax-function">StringHashMap</span>(measurement) {
+    <span class="syntax-type">var</span> measurements <span class="syntax-keyword">=</span> std.<span class="syntax-function">StringHashMap</span>(measurement).<span class="syntax-function">init</span>(allocator);
+    <span class="syntax-type">var</span> i<span class="syntax-keyword">:</span> <span class="syntax-type">usize</span> <span class="syntax-keyword">=</span> <span class="syntax-number">0</span>;
+
+    <span class="syntax-type">while</span> (i <span class="syntax-keyword">&lt;</span> contents.len) {
+        <span class="syntax-type">const</span> start <span class="syntax-keyword">=</span> i;
+
+        <span class="syntax-type">while</span> (contents[i] <span class="syntax-keyword">!=</span> <span class="syntax-string">&#39;;&#39;</span>) <span class="syntax-keyword">:</span> (i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>) {}
+        <span class="syntax-type">const</span> city <span class="syntax-keyword">=</span> contents[start..i];
+        i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>;
+
+        <span class="syntax-type">var</span> temp<span class="syntax-keyword">:</span> <span class="syntax-type">i32</span> <span class="syntax-keyword">=</span> <span class="syntax-number">0</span>;
+        <span class="syntax-type">var</span> negative<span class="syntax-keyword">:</span> <span class="syntax-type">bool</span> <span class="syntax-keyword">=</span> <span class="syntax-type">false</span>;
+        <span class="syntax-type">if</span> (contents[i] <span class="syntax-keyword">==</span> <span class="syntax-string">&#39;-&#39;</span>) {
+            negative <span class="syntax-keyword">=</span> <span class="syntax-type">true</span>;
+            i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>;
+        }
+
+        <span class="syntax-type">while</span> (contents[i] <span class="syntax-keyword">!=</span> <span class="syntax-number">&#39;\n&#39;</span>) <span class="syntax-keyword">:</span> (i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>) {
+            <span class="syntax-type">if</span> (contents[i] <span class="syntax-keyword">==</span> <span class="syntax-string">&#39;.&#39;</span>) <span class="syntax-type">continue</span>;
+            temp <span class="syntax-keyword">=</span> temp <span class="syntax-keyword">*</span> <span class="syntax-number">10</span>;
+            temp <span class="syntax-keyword">+=</span> @as(<span class="syntax-type">i32</span>, @intCast(contents[i] <span class="syntax-keyword">-</span> <span class="syntax-string">&#39;0&#39;</span>));
+        }
+
+        <span class="syntax-type">if</span> (negative) {
+            temp <span class="syntax-keyword">=</span> temp <span class="syntax-keyword">*</span> <span class="syntax-keyword">-</span><span class="syntax-number">1</span>;
+        }
+        i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>;
+
+        <span class="syntax-type">const</span> temp2 <span class="syntax-keyword">=</span> @as(<span class="syntax-type">f64</span>, @floatFromInt(temp)) <span class="syntax-keyword">/</span> <span class="syntax-number">10.0</span>;
+
+        <span class="syntax-type">const</span> elem <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> measurements.<span class="syntax-function">getOrPut</span>(city);
+        <span class="syntax-type">if</span> (<span class="syntax-keyword">!</span>elem.found_existing) {
+            elem.value_ptr.<span class="syntax-keyword">*</span> <span class="syntax-keyword">=</span> .{
+                .count <span class="syntax-keyword">=</span> <span class="syntax-number">1</span>,
+                .max <span class="syntax-keyword">=</span> temp2,
+                .min <span class="syntax-keyword">=</span> temp2,
+                .sum <span class="syntax-keyword">=</span> temp2,
+            };
+        } <span class="syntax-type">else</span> {
+            <span class="syntax-type">const</span> m <span class="syntax-keyword">=</span> elem.value_ptr;
+            <span class="syntax-type">if</span> (temp2 <span class="syntax-keyword">&lt;</span> m.min) m.min <span class="syntax-keyword">=</span> temp2;
+            <span class="syntax-type">if</span> (temp2 <span class="syntax-keyword">&gt;</span> m.max) m.max <span class="syntax-keyword">=</span> temp2;
+            m.sum <span class="syntax-keyword">+=</span> temp2;
+            m.count <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>;
+        }
+    }
+    <span class="syntax-type">return</span> measurements;
+}
+</code></pre>
 
 <p>These efforts produce an amazing jump in performance:</p>
 <p><code>16.50s user, 2.74s system, 56% CPU, 33.910 total</code></p>
@@ -467,166 +246,77 @@
 <p>Linear probing is a technique for dealing with hash collisions. For example, if two different elements have an equal hash (3), then the second element will keep probing to the right until an empty slot is found (loop back to the front if end reached). By making significantly more slots than necessary (65k slots for ~10k unique cities) I am able to significantly reduce collisions. Additionally, by checking nearby elements, the algorithm exploits cache locality.</p>
 <p>As for the hash function, FNV-1 stood out to me for its simplicity, the fact that it has to loop over every byte in the given input, which can very easily be combined with the current parser.</p>
 <p>The new hash map:
-<details class="code-collapse" open>
-    <summary>Iteration 4: Custom Hash Map Implementation</summary>
-    <div class="collapse-content">
-        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">29
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">30
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">31
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">32
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">33
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">34
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">35
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">36
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">37
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">38
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">39
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">40
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">41
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">42
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zig" data-lang="zig"><span style="display:flex;"><span><span style="color:#66d9ef">const</span> MAP_SIZE <span style="color:#f92672">=</span> <span style="color:#ae81ff">65536</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span><span style="color:#66d9ef">const</span> MyHashmap <span style="color:#f92672">=</span> <span style="color:#66d9ef">struct</span> {
-</span></span><span style="display:flex;"><span>    entries<span style="color:#f92672">:</span> []Entry,
-</span></span><span style="display:flex;"><span>    allocator<span style="color:#f92672">:</span> std.mem.Allocator,
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> Entry <span style="color:#f92672">=</span> <span style="color:#66d9ef">struct</span> {
-</span></span><span style="display:flex;"><span>        key<span style="color:#f92672">:</span> []<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">u8</span> <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;&#34;</span>,
-</span></span><span style="display:flex;"><span>        value<span style="color:#f92672">:</span> measurement <span style="color:#f92672">=</span> <span style="color:#66d9ef">undefined</span>,
-</span></span><span style="display:flex;"><span>        hash<span style="color:#f92672">:</span> <span style="color:#66d9ef">u64</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>,
-</span></span><span style="display:flex;"><span>    };
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">init</span>(allocator<span style="color:#f92672">:</span> std.mem.Allocator) <span style="color:#f92672">!</span>MyHashmap {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> entries <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> allocator.<span style="color:#a6e22e">alloc</span>(Entry, MAP_SIZE);
-</span></span><span style="display:flex;"><span>        @memset(entries, .{ .key <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;&#34;</span>, .hash <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span> });
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> .{ .entries <span style="color:#f92672">=</span> entries, .allocator <span style="color:#f92672">=</span> allocator };
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">deinit</span>(self<span style="color:#f92672">:</span> <span style="color:#f92672">*</span>MyHashmap) <span style="color:#66d9ef">void</span> {
-</span></span><span style="display:flex;"><span>        self.allocator.<span style="color:#a6e22e">free</span>(self.entries);
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">getOrPutWithHash</span>(self<span style="color:#f92672">:</span> <span style="color:#f92672">*</span>MyHashmap, key<span style="color:#f92672">:</span> []<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">u8</span>, h<span style="color:#f92672">:</span> <span style="color:#66d9ef">u64</span>) <span style="color:#f92672">!</span><span style="color:#66d9ef">struct</span> { value_ptr<span style="color:#f92672">:</span> <span style="color:#f92672">*</span>measurement, found_existing<span style="color:#f92672">:</span> <span style="color:#66d9ef">bool</span> } {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">var</span> idx <span style="color:#f92672">=</span> h <span style="color:#f92672">&amp;</span> (MAP_SIZE <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span> (<span style="color:#66d9ef">true</span>) {
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">const</span> entry <span style="color:#f92672">=</span> <span style="color:#f92672">&amp;</span>self.entries[idx];
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span> (entry.key.len <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {
-</span></span><span style="display:flex;"><span>                entry.key <span style="color:#f92672">=</span> key;
-</span></span><span style="display:flex;"><span>                entry.hash <span style="color:#f92672">=</span> h;
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">return</span> .{ .value_ptr <span style="color:#f92672">=</span> <span style="color:#f92672">&amp;</span>entry.value, .found_existing <span style="color:#f92672">=</span> <span style="color:#66d9ef">false</span> };
-</span></span><span style="display:flex;"><span>            }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span> (entry.hash <span style="color:#f92672">==</span> h <span style="color:#66d9ef">and</span> entry.key.len <span style="color:#f92672">==</span> key.len) {
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">if</span> (std.mem.<span style="color:#a6e22e">eql</span>(<span style="color:#66d9ef">u8</span>, entry.key, key)) {
-</span></span><span style="display:flex;"><span>                    <span style="color:#66d9ef">return</span> .{ .value_ptr <span style="color:#f92672">=</span> <span style="color:#f92672">&amp;</span>entry.value, .found_existing <span style="color:#f92672">=</span> <span style="color:#66d9ef">true</span> };
-</span></span><span style="display:flex;"><span>                }
-</span></span><span style="display:flex;"><span>            }
-</span></span><span style="display:flex;"><span>            idx <span style="color:#f92672">=</span> (idx <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>) <span style="color:#f92672">&amp;</span> (MAP_SIZE <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>);
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>};
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
-    </div>
-</details>
+<pre data-code-language="zig" data-code-title="Iteration 4: Custom Hash Map Implementation"><code><span class="syntax-type">const</span> MAP_SIZE <span class="syntax-keyword">=</span> <span class="syntax-number">65536</span>;
+
+<span class="syntax-type">const</span> MyHashmap <span class="syntax-keyword">=</span> <span class="syntax-type">struct</span> {
+    entries<span class="syntax-keyword">:</span> []Entry,
+    allocator<span class="syntax-keyword">:</span> std.mem.Allocator,
+
+    <span class="syntax-type">const</span> Entry <span class="syntax-keyword">=</span> <span class="syntax-type">struct</span> {
+        key<span class="syntax-keyword">:</span> []<span class="syntax-type">const</span> <span class="syntax-type">u8</span> <span class="syntax-keyword">=</span> <span class="syntax-string">&#34;&#34;</span>,
+        value<span class="syntax-keyword">:</span> measurement <span class="syntax-keyword">=</span> <span class="syntax-type">undefined</span>,
+        hash<span class="syntax-keyword">:</span> <span class="syntax-type">u64</span> <span class="syntax-keyword">=</span> <span class="syntax-number">0</span>,
+    };
+
+    <span class="syntax-type">fn</span> <span class="syntax-function">init</span>(allocator<span class="syntax-keyword">:</span> std.mem.Allocator) <span class="syntax-keyword">!</span>MyHashmap {
+        <span class="syntax-type">const</span> entries <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> allocator.<span class="syntax-function">alloc</span>(Entry, MAP_SIZE);
+        @memset(entries, .{ .key <span class="syntax-keyword">=</span> <span class="syntax-string">&#34;&#34;</span>, .hash <span class="syntax-keyword">=</span> <span class="syntax-number">0</span> });
+        <span class="syntax-type">return</span> .{ .entries <span class="syntax-keyword">=</span> entries, .allocator <span class="syntax-keyword">=</span> allocator };
+    }
+
+    <span class="syntax-type">fn</span> <span class="syntax-function">deinit</span>(self<span class="syntax-keyword">:</span> <span class="syntax-keyword">*</span>MyHashmap) <span class="syntax-type">void</span> {
+        self.allocator.<span class="syntax-function">free</span>(self.entries);
+    }
+
+    <span class="syntax-type">fn</span> <span class="syntax-function">getOrPutWithHash</span>(self<span class="syntax-keyword">:</span> <span class="syntax-keyword">*</span>MyHashmap, key<span class="syntax-keyword">:</span> []<span class="syntax-type">const</span> <span class="syntax-type">u8</span>, h<span class="syntax-keyword">:</span> <span class="syntax-type">u64</span>) <span class="syntax-keyword">!</span><span class="syntax-type">struct</span> { value_ptr<span class="syntax-keyword">:</span> <span class="syntax-keyword">*</span>measurement, found_existing<span class="syntax-keyword">:</span> <span class="syntax-type">bool</span> } {
+        <span class="syntax-type">var</span> idx <span class="syntax-keyword">=</span> h <span class="syntax-keyword">&amp;</span> (MAP_SIZE <span class="syntax-keyword">-</span> <span class="syntax-number">1</span>);
+
+        <span class="syntax-type">while</span> (<span class="syntax-type">true</span>) {
+            <span class="syntax-type">const</span> entry <span class="syntax-keyword">=</span> <span class="syntax-keyword">&amp;</span>self.entries[idx];
+            <span class="syntax-type">if</span> (entry.key.len <span class="syntax-keyword">==</span> <span class="syntax-number">0</span>) {
+                entry.key <span class="syntax-keyword">=</span> key;
+                entry.hash <span class="syntax-keyword">=</span> h;
+                <span class="syntax-type">return</span> .{ .value_ptr <span class="syntax-keyword">=</span> <span class="syntax-keyword">&amp;</span>entry.value, .found_existing <span class="syntax-keyword">=</span> <span class="syntax-type">false</span> };
+            }
+
+            <span class="syntax-type">if</span> (entry.hash <span class="syntax-keyword">==</span> h <span class="syntax-type">and</span> entry.key.len <span class="syntax-keyword">==</span> key.len) {
+                <span class="syntax-type">if</span> (std.mem.<span class="syntax-function">eql</span>(<span class="syntax-type">u8</span>, entry.key, key)) {
+                    <span class="syntax-type">return</span> .{ .value_ptr <span class="syntax-keyword">=</span> <span class="syntax-keyword">&amp;</span>entry.value, .found_existing <span class="syntax-keyword">=</span> <span class="syntax-type">true</span> };
+                }
+            }
+            idx <span class="syntax-keyword">=</span> (idx <span class="syntax-keyword">+</span> <span class="syntax-number">1</span>) <span class="syntax-keyword">&amp;</span> (MAP_SIZE <span class="syntax-keyword">-</span> <span class="syntax-number">1</span>);
+        }
+    }
+};
+</code></pre>
 </p>
 <p>New parser logic:
-<details class="code-collapse" open>
-    <summary>Iteration 4: New Parser Logic</summary>
-    <div class="collapse-content">
-        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zig" data-lang="zig"><span style="display:flex;"><span><span style="color:#66d9ef">while</span> (i <span style="color:#f92672">&lt;</span> contents.len) {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> start <span style="color:#f92672">=</span> i;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> h<span style="color:#f92672">:</span> <span style="color:#66d9ef">u64</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// One-pass: scan for &#39;;&#39; and calculate hash
-</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (contents[i] <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#39;;&#39;</span>) <span style="color:#f92672">:</span> (i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>) {
-</span></span><span style="display:flex;"><span>        h <span style="color:#f92672">=</span> (h <span style="color:#f92672">&lt;&lt;</span> <span style="color:#ae81ff">5</span>) <span style="color:#f92672">-%</span> h <span style="color:#f92672">+%</span> contents[i];
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> city <span style="color:#f92672">=</span> contents[start..i];
-</span></span><span style="display:flex;"><span>    i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>; <span style="color:#75715e">// skip &#39;;&#39;
-</span></span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// Fast temperature parsing
-</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> temp<span style="color:#f92672">:</span> <span style="color:#66d9ef">i32</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> negative <span style="color:#f92672">=</span> <span style="color:#66d9ef">false</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (contents[i] <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;-&#39;</span>) {
-</span></span><span style="display:flex;"><span>        negative <span style="color:#f92672">=</span> <span style="color:#66d9ef">true</span>;
-</span></span><span style="display:flex;"><span>        i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (contents[i] <span style="color:#f92672">!=</span> <span style="color:#ae81ff">&#39;\n&#39;</span>) <span style="color:#f92672">:</span> (i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (contents[i] <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;.&#39;</span>) <span style="color:#66d9ef">continue</span>;
-</span></span><span style="display:flex;"><span>        temp <span style="color:#f92672">=</span> temp <span style="color:#f92672">*</span> <span style="color:#ae81ff">10</span> <span style="color:#f92672">+</span> @as(<span style="color:#66d9ef">i32</span>, @intCast(contents[i] <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;0&#39;</span>));
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (negative) temp <span style="color:#f92672">=</span> <span style="color:#f92672">-</span>temp;
-</span></span><span style="display:flex;"><span>    i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// put the new temp into the hashmap with key = h
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div>
-    </div>
-</details>
+<pre data-code-language="zig" data-code-title="Iteration 4: New Parser Logic"><code><span class="syntax-type">while</span> (i <span class="syntax-keyword">&lt;</span> contents.len) {
+    <span class="syntax-type">const</span> start <span class="syntax-keyword">=</span> i;
+    <span class="syntax-type">var</span> h<span class="syntax-keyword">:</span> <span class="syntax-type">u64</span> <span class="syntax-keyword">=</span> <span class="syntax-number">0</span>;
+
+    <span class="syntax-comment">// One-pass: scan for &#39;;&#39; and calculate hash
+</span>    <span class="syntax-type">while</span> (contents[i] <span class="syntax-keyword">!=</span> <span class="syntax-string">&#39;;&#39;</span>) <span class="syntax-keyword">:</span> (i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>) {
+        h <span class="syntax-keyword">=</span> (h <span class="syntax-keyword">&lt;&lt;</span> <span class="syntax-number">5</span>) <span class="syntax-keyword">-%</span> h <span class="syntax-keyword">+%</span> contents[i];
+    }
+    <span class="syntax-type">const</span> city <span class="syntax-keyword">=</span> contents[start..i];
+    i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>; <span class="syntax-comment">// skip &#39;;&#39;
+</span>
+    <span class="syntax-comment">// Fast temperature parsing
+</span>    <span class="syntax-type">var</span> temp<span class="syntax-keyword">:</span> <span class="syntax-type">i32</span> <span class="syntax-keyword">=</span> <span class="syntax-number">0</span>;
+    <span class="syntax-type">var</span> negative <span class="syntax-keyword">=</span> <span class="syntax-type">false</span>;
+    <span class="syntax-type">if</span> (contents[i] <span class="syntax-keyword">==</span> <span class="syntax-string">&#39;-&#39;</span>) {
+        negative <span class="syntax-keyword">=</span> <span class="syntax-type">true</span>;
+        i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>;
+    }
+    <span class="syntax-type">while</span> (contents[i] <span class="syntax-keyword">!=</span> <span class="syntax-number">&#39;\n&#39;</span>) <span class="syntax-keyword">:</span> (i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>) {
+        <span class="syntax-type">if</span> (contents[i] <span class="syntax-keyword">==</span> <span class="syntax-string">&#39;.&#39;</span>) <span class="syntax-type">continue</span>;
+        temp <span class="syntax-keyword">=</span> temp <span class="syntax-keyword">*</span> <span class="syntax-number">10</span> <span class="syntax-keyword">+</span> @as(<span class="syntax-type">i32</span>, @intCast(contents[i] <span class="syntax-keyword">-</span> <span class="syntax-string">&#39;0&#39;</span>));
+    }
+    <span class="syntax-type">if</span> (negative) temp <span class="syntax-keyword">=</span> <span class="syntax-keyword">-</span>temp;
+    i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>;
+    <span class="syntax-comment">// put the new temp into the hashmap with key = h
+</span></code></pre>
 </p>
 <p>Implementing these changes, results in surprisingly small gains:</p>
 <p><code>12.61s user, 2.74s system, 49% CPU, 30.958 total</code></p>
@@ -636,46 +326,21 @@
   
 </h2>
 <p>I decided to remove mmap entirely and go back to manual buffering, this time using the latest Zig reading interface and reading to a 8mb buffer. Mmap is a fundamentally reactive strategy where the OS fetches a page only when it needs to. This is great for databases with random reads and writes but not good enough to just go through one massive file once.</p>
-<details class="code-collapse" open>
-    <summary>Iteration 5: Manual Buffering</summary>
-    <div class="collapse-content">
-        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zig" data-lang="zig"><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">open_file</span>(path<span style="color:#f92672">:</span> []<span style="color:#66d9ef">const</span> <span style="color:#66d9ef">u8</span>, alloc<span style="color:#f92672">:</span> std.mem.Allocator) <span style="color:#f92672">!</span>[]<span style="color:#66d9ef">u8</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> file <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> std.fs.<span style="color:#a6e22e">cwd</span>().<span style="color:#a6e22e">openFile</span>(path, .{ .mode <span style="color:#f92672">=</span> .read_only });
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">defer</span> file.<span style="color:#a6e22e">close</span>();
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> file_size <span style="color:#f92672">=</span> (<span style="color:#66d9ef">try</span> file.<span style="color:#a6e22e">stat</span>()).size;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> buf<span style="color:#f92672">:</span> [<span style="color:#ae81ff">1024</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">1024</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">8</span>]<span style="color:#66d9ef">u8</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">undefined</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> file_reader <span style="color:#f92672">=</span> file.<span style="color:#a6e22e">reader</span>(<span style="color:#f92672">&amp;</span>buf);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> contents <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> file_reader.interface.<span style="color:#a6e22e">readAlloc</span>(alloc, file_size);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">return</span> contents;
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
-    </div>
-</details>
+<pre data-code-language="zig" data-code-title="Iteration 5: Manual Buffering"><code><span class="syntax-type">fn</span> <span class="syntax-function">open_file</span>(path<span class="syntax-keyword">:</span> []<span class="syntax-type">const</span> <span class="syntax-type">u8</span>, alloc<span class="syntax-keyword">:</span> std.mem.Allocator) <span class="syntax-keyword">!</span>[]<span class="syntax-type">u8</span> {
+    <span class="syntax-type">const</span> file <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> std.fs.<span class="syntax-function">cwd</span>().<span class="syntax-function">openFile</span>(path, .{ .mode <span class="syntax-keyword">=</span> .read_only });
+    <span class="syntax-type">defer</span> file.<span class="syntax-function">close</span>();
+
+    <span class="syntax-type">const</span> file_size <span class="syntax-keyword">=</span> (<span class="syntax-type">try</span> file.<span class="syntax-function">stat</span>()).size;
+
+    <span class="syntax-type">var</span> buf<span class="syntax-keyword">:</span> [<span class="syntax-number">1024</span> <span class="syntax-keyword">*</span> <span class="syntax-number">1024</span> <span class="syntax-keyword">*</span> <span class="syntax-number">8</span>]<span class="syntax-type">u8</span> <span class="syntax-keyword">=</span> <span class="syntax-type">undefined</span>;
+
+    <span class="syntax-type">var</span> file_reader <span class="syntax-keyword">=</span> file.<span class="syntax-function">reader</span>(<span class="syntax-keyword">&amp;</span>buf);
+
+    <span class="syntax-type">const</span> contents <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> file_reader.interface.<span class="syntax-function">readAlloc</span>(alloc, file_size);
+
+    <span class="syntax-type">return</span> contents;
+}
+</code></pre>
 
 <p>The results after this change were very inconsistent. I often witnessed outright regression in performance, but sometimes getting very low times such as</p>
 <p><code>12.16s user, 5.11s system, 79% CPU, 21.701 total</code></p>
@@ -687,96 +352,46 @@
 <p>My mistake dawned on me when I thought about the program from a higher level: I am reading the entire file into memory, and then parsing it. The OS is evicting most of the pages which I read in, unless the OS wants to keep the entire 15gb file that my program requests in memory, which is…unlikely, hence the inconsistency.</p>
 <p>I fixed this problem by interleaving reading and parsing. The program reads as much as it can into a 1 megabyte sized buffer, and then parses it. Once it’s done with that chunk, it gets the next chunk. This way, the OS and disk are given some time to load the next chunk while the current chunk is parsed, minimizing waiting. The only downside is the additional logic of processing a chunk that doesn’t end on a newline delimiter.</p>
 <p>I refactored <code>main()</code> and removed <code>open_file()</code> for simplicity:</p>
-<details class="code-collapse" open>
-    <summary>Iteration 6: Interleaved Chunk Reading</summary>
-    <div class="collapse-content">
-        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">29
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">30
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">31
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">32
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">33
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">34
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">35
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">36
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">37
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">38
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">39
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zig" data-lang="zig"><span style="display:flex;"><span><span style="color:#66d9ef">pub</span> <span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">main</span>() <span style="color:#f92672">!</span><span style="color:#66d9ef">void</span> {
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// ...... open file and create allocator
-</span></span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#75715e">// 1MB buffer like Go - allows OS read-ahead to overlap with processing
-</span></span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> CHUNK_SIZE <span style="color:#f92672">=</span> <span style="color:#ae81ff">1024</span> <span style="color:#f92672">*</span> <span style="color:#ae81ff">1024</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> buf<span style="color:#f92672">:</span> [CHUNK_SIZE]<span style="color:#66d9ef">u8</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">undefined</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> read_start<span style="color:#f92672">:</span> <span style="color:#66d9ef">usize</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (<span style="color:#66d9ef">true</span>) {
-</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Read into buffer after any leftover bytes from previous iteration
-</span></span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> n <span style="color:#f92672">=</span> <span style="color:#66d9ef">try</span> file.<span style="color:#a6e22e">read</span>(buf[read_start..]);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (read_start <span style="color:#f92672">+</span> n <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) <span style="color:#66d9ef">break</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> chunk <span style="color:#f92672">=</span> buf[<span style="color:#ae81ff">0</span> .. read_start <span style="color:#f92672">+</span> n];
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Find last newline - everything after is incomplete
-</span></span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">var</span> newline_pos<span style="color:#f92672">:</span> <span style="color:#66d9ef">usize</span> <span style="color:#f92672">=</span> chunk.len;
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span> (newline_pos <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span> <span style="color:#66d9ef">and</span> chunk[newline_pos <span style="color:#f92672">-</span> <span style="color:#ae81ff">1</span>] <span style="color:#f92672">!=</span> <span style="color:#ae81ff">&#39;\n&#39;</span>) {
-</span></span><span style="display:flex;"><span>            newline_pos <span style="color:#f92672">-=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (newline_pos <span style="color:#f92672">==</span> <span style="color:#ae81ff">0</span>) {
-</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// No complete line found, need to read more
-</span></span></span><span style="display:flex;"><span>            read_start <span style="color:#f92672">=</span> chunk.len;
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">continue</span>;
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Process only complete lines
-</span></span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">try</span> <span style="color:#a6e22e">parse_chunk</span>(chunk[<span style="color:#ae81ff">0</span>..newline_pos], <span style="color:#f92672">&amp;</span>measurements);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// Copy remaining incomplete line to start of buffer for next iteration
-</span></span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> remaining <span style="color:#f92672">=</span> chunk.len <span style="color:#f92672">-</span> newline_pos;
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (remaining <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">0</span>) {
-</span></span><span style="display:flex;"><span>            @memcpy(buf[<span style="color:#ae81ff">0</span>..remaining], chunk[newline_pos..]);
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>        read_start <span style="color:#f92672">=</span> remaining;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">try</span> <span style="color:#a6e22e">print_measurements</span>(measurements, allocator);
-</span></span><span style="display:flex;"><span>}
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
-    </div>
-</details>
+<pre data-code-language="zig" data-code-title="Iteration 6: Interleaved Chunk Reading"><code><span class="syntax-type">pub</span> <span class="syntax-type">fn</span> <span class="syntax-function">main</span>() <span class="syntax-keyword">!</span><span class="syntax-type">void</span> {
+    <span class="syntax-comment">// ...... open file and create allocator
+</span>
+    <span class="syntax-comment">// 1MB buffer like Go - allows OS read-ahead to overlap with processing
+</span>    <span class="syntax-type">const</span> CHUNK_SIZE <span class="syntax-keyword">=</span> <span class="syntax-number">1024</span> <span class="syntax-keyword">*</span> <span class="syntax-number">1024</span>;
+    <span class="syntax-type">var</span> buf<span class="syntax-keyword">:</span> [CHUNK_SIZE]<span class="syntax-type">u8</span> <span class="syntax-keyword">=</span> <span class="syntax-type">undefined</span>;
+    <span class="syntax-type">var</span> read_start<span class="syntax-keyword">:</span> <span class="syntax-type">usize</span> <span class="syntax-keyword">=</span> <span class="syntax-number">0</span>;
+
+    <span class="syntax-type">while</span> (<span class="syntax-type">true</span>) {
+        <span class="syntax-comment">// Read into buffer after any leftover bytes from previous iteration
+</span>        <span class="syntax-type">const</span> n <span class="syntax-keyword">=</span> <span class="syntax-type">try</span> file.<span class="syntax-function">read</span>(buf[read_start..]);
+        <span class="syntax-type">if</span> (read_start <span class="syntax-keyword">+</span> n <span class="syntax-keyword">==</span> <span class="syntax-number">0</span>) <span class="syntax-type">break</span>;
+
+        <span class="syntax-type">const</span> chunk <span class="syntax-keyword">=</span> buf[<span class="syntax-number">0</span> .. read_start <span class="syntax-keyword">+</span> n];
+
+        <span class="syntax-comment">// Find last newline - everything after is incomplete
+</span>        <span class="syntax-type">var</span> newline_pos<span class="syntax-keyword">:</span> <span class="syntax-type">usize</span> <span class="syntax-keyword">=</span> chunk.len;
+        <span class="syntax-type">while</span> (newline_pos <span class="syntax-keyword">&gt;</span> <span class="syntax-number">0</span> <span class="syntax-type">and</span> chunk[newline_pos <span class="syntax-keyword">-</span> <span class="syntax-number">1</span>] <span class="syntax-keyword">!=</span> <span class="syntax-number">&#39;\n&#39;</span>) {
+            newline_pos <span class="syntax-keyword">-=</span> <span class="syntax-number">1</span>;
+        }
+        <span class="syntax-type">if</span> (newline_pos <span class="syntax-keyword">==</span> <span class="syntax-number">0</span>) {
+            <span class="syntax-comment">// No complete line found, need to read more
+</span>            read_start <span class="syntax-keyword">=</span> chunk.len;
+            <span class="syntax-type">continue</span>;
+        }
+
+        <span class="syntax-comment">// Process only complete lines
+</span>        <span class="syntax-type">try</span> <span class="syntax-function">parse_chunk</span>(chunk[<span class="syntax-number">0</span>..newline_pos], <span class="syntax-keyword">&amp;</span>measurements);
+
+        <span class="syntax-comment">// Copy remaining incomplete line to start of buffer for next iteration
+</span>        <span class="syntax-type">const</span> remaining <span class="syntax-keyword">=</span> chunk.len <span class="syntax-keyword">-</span> newline_pos;
+        <span class="syntax-type">if</span> (remaining <span class="syntax-keyword">&gt;</span> <span class="syntax-number">0</span>) {
+            @memcpy(buf[<span class="syntax-number">0</span>..remaining], chunk[newline_pos..]);
+        }
+        read_start <span class="syntax-keyword">=</span> remaining;
+    }
+
+    <span class="syntax-type">try</span> <span class="syntax-function">print_measurements</span>(measurements, allocator);
+}
+</code></pre>
 
 <p>The performance gains were immediately apparent:</p>
 <p><code>11.84s user, 1.13s system, 98% CPU, 13.203 total</code></p>
@@ -786,56 +401,26 @@
   
 </h2>
 <p>I was able to shave off some time by reducing branching (if statements) when parsing the temperature. CPUs don&rsquo;t like branching as they execute instructinos out of order and branches make that tricky.</p>
-<details class="code-collapse" open>
-    <summary>Iteration 7: Branchless Temperature Parsing</summary>
-    <div class="collapse-content">
-        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zig" data-lang="zig"><span style="display:flex;"><span><span style="color:#66d9ef">var</span> temp<span style="color:#f92672">:</span> <span style="color:#66d9ef">i32</span> <span style="color:#f92672">=</span> <span style="color:#66d9ef">undefined</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> negative <span style="color:#f92672">=</span> <span style="color:#66d9ef">false</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (contents[i] <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;-&#39;</span>) {
-</span></span><span style="display:flex;"><span>        negative <span style="color:#f92672">=</span> <span style="color:#66d9ef">true</span>;
-</span></span><span style="display:flex;"><span>        i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>    }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> d0<span style="color:#f92672">:</span> <span style="color:#66d9ef">i32</span> <span style="color:#f92672">=</span> @intCast(contents[i] <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;0&#39;</span>);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> (contents[i <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>] <span style="color:#f92672">==</span> <span style="color:#e6db74">&#39;.&#39;</span>) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> frac<span style="color:#f92672">:</span> <span style="color:#66d9ef">i32</span> <span style="color:#f92672">=</span> @intCast(contents[i <span style="color:#f92672">+</span> <span style="color:#ae81ff">2</span>] <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;0&#39;</span>);
-</span></span><span style="display:flex;"><span>        temp <span style="color:#f92672">=</span> d0 <span style="color:#f92672">*</span> <span style="color:#ae81ff">10</span> <span style="color:#f92672">+</span> frac;
-</span></span><span style="display:flex;"><span>        i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">4</span>; <span style="color:#75715e">// digit &#39;.&#39; digit &#39;\n&#39;
-</span></span></span><span style="display:flex;"><span>    } <span style="color:#66d9ef">else</span> {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> d1<span style="color:#f92672">:</span> <span style="color:#66d9ef">i32</span> <span style="color:#f92672">=</span> @intCast(contents[i <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>] <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;0&#39;</span>);
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> frac<span style="color:#f92672">:</span> <span style="color:#66d9ef">i32</span> <span style="color:#f92672">=</span> @intCast(contents[i <span style="color:#f92672">+</span> <span style="color:#ae81ff">3</span>] <span style="color:#f92672">-</span> <span style="color:#e6db74">&#39;0&#39;</span>);
-</span></span><span style="display:flex;"><span>        temp <span style="color:#f92672">=</span> (d0 <span style="color:#f92672">*</span> <span style="color:#ae81ff">10</span> <span style="color:#f92672">+</span> d1) <span style="color:#f92672">*</span> <span style="color:#ae81ff">10</span> <span style="color:#f92672">+</span> frac;
-</span></span><span style="display:flex;"><span>        i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">5</span>; <span style="color:#75715e">// digit digit &#39;.&#39; digit &#39;\n&#39;
-</span></span></span><span style="display:flex;"><span>    }
-</span></span></code></pre></td></tr></table>
-</div>
-</div>
-    </div>
-</details>
+<pre data-code-language="zig" data-code-title="Iteration 7: Branchless Temperature Parsing"><code><span class="syntax-type">var</span> temp<span class="syntax-keyword">:</span> <span class="syntax-type">i32</span> <span class="syntax-keyword">=</span> <span class="syntax-type">undefined</span>;
+    <span class="syntax-type">var</span> negative <span class="syntax-keyword">=</span> <span class="syntax-type">false</span>;
+    <span class="syntax-type">if</span> (contents[i] <span class="syntax-keyword">==</span> <span class="syntax-string">&#39;-&#39;</span>) {
+        negative <span class="syntax-keyword">=</span> <span class="syntax-type">true</span>;
+        i <span class="syntax-keyword">+=</span> <span class="syntax-number">1</span>;
+    }
+
+    <span class="syntax-type">const</span> d0<span class="syntax-keyword">:</span> <span class="syntax-type">i32</span> <span class="syntax-keyword">=</span> @intCast(contents[i] <span class="syntax-keyword">-</span> <span class="syntax-string">&#39;0&#39;</span>);
+
+    <span class="syntax-type">if</span> (contents[i <span class="syntax-keyword">+</span> <span class="syntax-number">1</span>] <span class="syntax-keyword">==</span> <span class="syntax-string">&#39;.&#39;</span>) {
+        <span class="syntax-type">const</span> frac<span class="syntax-keyword">:</span> <span class="syntax-type">i32</span> <span class="syntax-keyword">=</span> @intCast(contents[i <span class="syntax-keyword">+</span> <span class="syntax-number">2</span>] <span class="syntax-keyword">-</span> <span class="syntax-string">&#39;0&#39;</span>);
+        temp <span class="syntax-keyword">=</span> d0 <span class="syntax-keyword">*</span> <span class="syntax-number">10</span> <span class="syntax-keyword">+</span> frac;
+        i <span class="syntax-keyword">+=</span> <span class="syntax-number">4</span>; <span class="syntax-comment">// digit &#39;.&#39; digit &#39;\n&#39;
+</span>    } <span class="syntax-type">else</span> {
+        <span class="syntax-type">const</span> d1<span class="syntax-keyword">:</span> <span class="syntax-type">i32</span> <span class="syntax-keyword">=</span> @intCast(contents[i <span class="syntax-keyword">+</span> <span class="syntax-number">1</span>] <span class="syntax-keyword">-</span> <span class="syntax-string">&#39;0&#39;</span>);
+        <span class="syntax-type">const</span> frac<span class="syntax-keyword">:</span> <span class="syntax-type">i32</span> <span class="syntax-keyword">=</span> @intCast(contents[i <span class="syntax-keyword">+</span> <span class="syntax-number">3</span>] <span class="syntax-keyword">-</span> <span class="syntax-string">&#39;0&#39;</span>);
+        temp <span class="syntax-keyword">=</span> (d0 <span class="syntax-keyword">*</span> <span class="syntax-number">10</span> <span class="syntax-keyword">+</span> d1) <span class="syntax-keyword">*</span> <span class="syntax-number">10</span> <span class="syntax-keyword">+</span> frac;
+        i <span class="syntax-keyword">+=</span> <span class="syntax-number">5</span>; <span class="syntax-comment">// digit digit &#39;.&#39; digit &#39;\n&#39;
+</span>    }
+</code></pre>
 
 <p>New time was:</p>
 <p><code>11.29s user, 1.31s system, 98% CPU, 12.843 total</code></p>
@@ -866,116 +451,56 @@
 <p>For the final push, I decided to tap into AI and redesign the hash function along with some parsing logic with the help of Claude Opus 4.5.</p>
 <p>I was able to rewrite the city parsing logic to both find the “;” delimiter faster and hash the city in less instructions and in a more deterministic way. The better performance comes from grouping 8 bytes together into a 64 bit number, and using bitwise operations to find in which byte the delimiter is located. This is accomplished by XORing the 8 bytes with 0x3b3b3b3b3b3b3b3b (0x3b = “;”) and using the @ctz (count trailing zeroes) directive to get the index of where the delimiter is.</p>
 <p>As for the hash function, I used Wyhash, which is the default hash used in Zig. Wyhash is based on the <a href="https://github.com/wangyi-fudan/wyhash"  class="external-link" target="_blank" rel="noopener">Wyhash project on GitHub</a>. In this implementation, the custom hash logic is interleaved with the delimiter search to improve execution speed.</p>
-<details class="code-collapse" open>
-    <summary>Iteration 9: Optimized Combined Hash/Scan Loop</summary>
-    <div class="collapse-content">
-        <div class="highlight"><div style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;">
-<table style="border-spacing:0;padding:0;margin:0;border:0;"><tr><td style="vertical-align:top;padding:0;margin:0;border:0;">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">29
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">30
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">31
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">32
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">33
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">34
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">35
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">36
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">37
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">38
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">39
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">40
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">41
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">42
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">43
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">44
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">45
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">46
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">47
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">48
-</span><span style="white-space:pre;-webkit-user-select:none;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">49
-</span></code></pre></td>
-<td style="vertical-align:top;padding:0;margin:0;border:0;;width:100%">
-<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-zig" data-lang="zig"><span style="display:flex;"><span><span style="color:#66d9ef">fn</span> <span style="color:#a6e22e">parse_chunk</span>(contents<span style="color:#f92672">:</span> []<span style="color:#66d9ef">u8</span>, measurements<span style="color:#f92672">:</span> <span style="color:#f92672">*</span>MyHashmap) <span style="color:#f92672">!</span><span style="color:#66d9ef">void</span> {
-</span></span><span style="display:flex;"><span>    @setRuntimeSafety(<span style="color:#66d9ef">false</span>);
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">var</span> i<span style="color:#f92672">:</span> <span style="color:#66d9ef">usize</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>;
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">const</span> seed<span style="color:#f92672">:</span> <span style="color:#66d9ef">u64</span> <span style="color:#f92672">=</span> <span style="color:#ae81ff">0x9E3779B97F4A7C15</span>; <span style="color:#75715e">// WyHash constant
-</span></span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">while</span> (i <span style="color:#f92672">&lt;</span> contents.len) {
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">const</span> start <span style="color:#f92672">=</span> i;
-</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">var</span> h<span style="color:#f92672">:</span> <span style="color:#66d9ef">u64</span> <span style="color:#f92672">=</span> seed;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// --- 1. The Combined Hash/Scan Loop ---
-</span></span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">while</span> (<span style="color:#66d9ef">true</span>) {
-</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// Load 8 bytes (unaligned)
-</span></span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">var</span> word <span style="color:#f92672">=</span> @as(<span style="color:#f92672">*</span><span style="color:#66d9ef">align</span>(<span style="color:#ae81ff">1</span>) <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">u64</span>, @ptrCast(contents.ptr <span style="color:#f92672">+</span> i)).<span style="color:#f92672">*</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// Check for &#39;;&#39;
-</span></span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">const</span> input <span style="color:#f92672">=</span> word <span style="color:#f92672">^</span> <span style="color:#ae81ff">0x3B3B3B3B3B3B3B3B</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>            <span style="color:#75715e">// see if any semicolon was found at all (that byte will be a zero)
-</span></span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">const</span> tmp <span style="color:#f92672">=</span> (input <span style="color:#f92672">-%</span> <span style="color:#ae81ff">0x0101010101010101</span>) <span style="color:#f92672">&amp;</span> <span style="color:#f92672">~</span>input <span style="color:#f92672">&amp;</span> <span style="color:#ae81ff">0x8080808080808080</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>            <span style="color:#66d9ef">if</span> (tmp <span style="color:#f92672">!=</span> <span style="color:#ae81ff">0</span>) {
-</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// Semicolon FOUND inside this block!
-</span></span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// 1. Find exact byte index (0-7)
-</span></span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">const</span> k <span style="color:#f92672">=</span> @ctz(tmp) <span style="color:#f92672">&gt;&gt;</span> <span style="color:#ae81ff">3</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// 2. Create a mask to zero-out the temperature data
-</span></span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">const</span> mask <span style="color:#f92672">=</span> (@as(<span style="color:#66d9ef">u64</span>, <span style="color:#ae81ff">1</span>) <span style="color:#f92672">&lt;&lt;</span> @intCast(k <span style="color:#f92672">*</span> <span style="color:#ae81ff">8</span>)) <span style="color:#f92672">-%</span> <span style="color:#ae81ff">1</span>;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// 3. Mask the word so it only contains the city name parts
-</span></span></span><span style="display:flex;"><span>                word <span style="color:#f92672">&amp;=</span> mask;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// 4. Final hash mix
-</span></span></span><span style="display:flex;"><span>                h <span style="color:#f92672">=</span> <span style="color:#a6e22e">wymix</span>(h <span style="color:#f92672">^</span> word, seed);
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// 5. Advance &#39;i&#39; to the semicolon position for the next parsing step
-</span></span></span><span style="display:flex;"><span>                i <span style="color:#f92672">+=</span> k;
-</span></span><span style="display:flex;"><span>                <span style="color:#66d9ef">break</span>;
-</span></span><span style="display:flex;"><span>            } <span style="color:#66d9ef">else</span> {
-</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// Semicolon NOT found.
-</span></span></span><span style="display:flex;"><span>                <span style="color:#75715e">// 1. Mix this entire 8-byte block into the hash
-</span></span></span><span style="display:flex;"><span>                h <span style="color:#f92672">=</span> (h <span style="color:#f92672">^</span> word) <span style="color:#f92672">*%</span> seed;
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>                <span style="color:#75715e">// 2. Move to next block
-</span></span></span><span style="display:flex;"><span>                i <span style="color:#f92672">+=</span> <span style="color:#ae81ff">8</span>;
-</span></span><span style="display:flex;"><span>            }
-</span></span><span style="display:flex;"><span>        }
-</span></span><span style="display:flex;"><span>
-</span></span><span style="display:flex;"><span>        <span style="color:#75715e">//.....continue to parsing temperature
-</span></span></span></code></pre></td></tr></table>
-</div>
-</div>
-    </div>
-</details>
+<pre data-code-language="zig" data-code-title="Iteration 9: Optimized Combined Hash/Scan Loop"><code><span class="syntax-type">fn</span> <span class="syntax-function">parse_chunk</span>(contents<span class="syntax-keyword">:</span> []<span class="syntax-type">u8</span>, measurements<span class="syntax-keyword">:</span> <span class="syntax-keyword">*</span>MyHashmap) <span class="syntax-keyword">!</span><span class="syntax-type">void</span> {
+    @setRuntimeSafety(<span class="syntax-type">false</span>);
+    <span class="syntax-type">var</span> i<span class="syntax-keyword">:</span> <span class="syntax-type">usize</span> <span class="syntax-keyword">=</span> <span class="syntax-number">0</span>;
+    <span class="syntax-type">const</span> seed<span class="syntax-keyword">:</span> <span class="syntax-type">u64</span> <span class="syntax-keyword">=</span> <span class="syntax-number">0x9E3779B97F4A7C15</span>; <span class="syntax-comment">// WyHash constant
+</span>
+    <span class="syntax-type">while</span> (i <span class="syntax-keyword">&lt;</span> contents.len) {
+        <span class="syntax-type">const</span> start <span class="syntax-keyword">=</span> i;
+        <span class="syntax-type">var</span> h<span class="syntax-keyword">:</span> <span class="syntax-type">u64</span> <span class="syntax-keyword">=</span> seed;
+
+        <span class="syntax-comment">// --- 1. The Combined Hash/Scan Loop ---
+</span>        <span class="syntax-type">while</span> (<span class="syntax-type">true</span>) {
+            <span class="syntax-comment">// Load 8 bytes (unaligned)
+</span>            <span class="syntax-type">var</span> word <span class="syntax-keyword">=</span> @as(<span class="syntax-keyword">*</span><span class="syntax-type">align</span>(<span class="syntax-number">1</span>) <span class="syntax-type">const</span> <span class="syntax-type">u64</span>, @ptrCast(contents.ptr <span class="syntax-keyword">+</span> i)).<span class="syntax-keyword">*</span>;
+
+            <span class="syntax-comment">// Check for &#39;;&#39;
+</span>            <span class="syntax-type">const</span> input <span class="syntax-keyword">=</span> word <span class="syntax-keyword">^</span> <span class="syntax-number">0x3B3B3B3B3B3B3B3B</span>;
+
+            <span class="syntax-comment">// see if any semicolon was found at all (that byte will be a zero)
+</span>            <span class="syntax-type">const</span> tmp <span class="syntax-keyword">=</span> (input <span class="syntax-keyword">-%</span> <span class="syntax-number">0x0101010101010101</span>) <span class="syntax-keyword">&amp;</span> <span class="syntax-keyword">~</span>input <span class="syntax-keyword">&amp;</span> <span class="syntax-number">0x8080808080808080</span>;
+
+            <span class="syntax-type">if</span> (tmp <span class="syntax-keyword">!=</span> <span class="syntax-number">0</span>) {
+                <span class="syntax-comment">// Semicolon FOUND inside this block!
+</span>
+                <span class="syntax-comment">// 1. Find exact byte index (0-7)
+</span>                <span class="syntax-type">const</span> k <span class="syntax-keyword">=</span> @ctz(tmp) <span class="syntax-keyword">&gt;&gt;</span> <span class="syntax-number">3</span>;
+
+                <span class="syntax-comment">// 2. Create a mask to zero-out the temperature data
+</span>                <span class="syntax-type">const</span> mask <span class="syntax-keyword">=</span> (@as(<span class="syntax-type">u64</span>, <span class="syntax-number">1</span>) <span class="syntax-keyword">&lt;&lt;</span> @intCast(k <span class="syntax-keyword">*</span> <span class="syntax-number">8</span>)) <span class="syntax-keyword">-%</span> <span class="syntax-number">1</span>;
+
+                <span class="syntax-comment">// 3. Mask the word so it only contains the city name parts
+</span>                word <span class="syntax-keyword">&amp;=</span> mask;
+
+                <span class="syntax-comment">// 4. Final hash mix
+</span>                h <span class="syntax-keyword">=</span> <span class="syntax-function">wymix</span>(h <span class="syntax-keyword">^</span> word, seed);
+
+                <span class="syntax-comment">// 5. Advance &#39;i&#39; to the semicolon position for the next parsing step
+</span>                i <span class="syntax-keyword">+=</span> k;
+                <span class="syntax-type">break</span>;
+            } <span class="syntax-type">else</span> {
+                <span class="syntax-comment">// Semicolon NOT found.
+</span>                <span class="syntax-comment">// 1. Mix this entire 8-byte block into the hash
+</span>                h <span class="syntax-keyword">=</span> (h <span class="syntax-keyword">^</span> word) <span class="syntax-keyword">*%</span> seed;
+
+                <span class="syntax-comment">// 2. Move to next block
+</span>                i <span class="syntax-keyword">+=</span> <span class="syntax-number">8</span>;
+            }
+        }
+
+        <span class="syntax-comment">//.....continue to parsing temperature
+</span></code></pre>
 
 <p>Note how the hashing and parsing are tightly interleaved.</p>
 <p>The end result is a ~15% reduction in user time:</p>

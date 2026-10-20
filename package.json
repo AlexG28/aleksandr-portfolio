@@ -11,7 +11,8 @@
     "check": "bun --bun svelte-kit sync && bun --bun svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "gen": "wrangler types",
-    "deploy": "bun run build && wrangler deploy"
+    "deploy": "bun run build && wrangler deploy",
+    "test": "bun test"
   },
   "devDependencies": {
     "@sveltejs/adapter-cloudflare": "^8.0.0",
