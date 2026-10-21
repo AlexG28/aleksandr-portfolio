@@ -34,11 +34,14 @@ Authenticate with your own Cloudflare account first. Deployment publishes to a w
 - About: `src/routes/about/+page.svelte`
 - Article index and metadata: `src/lib/content/posts.json`
 - Article bodies: `src/lib/content/<slug>.html`
-- Photography metadata, categories, and dimensions: `src/lib/content/photos.json`
+- Optional photography descriptions and display order: `src/lib/content/photos.json`
+- Automatic image processing: `scripts/photos.ts`
 - Original photographs, portrait, and article diagrams: `static/images/`
 - Shared design tokens and responsive styles: `src/app.css`
 
-To add an article, add its metadata to `posts.json` and a matching HTML file. Code examples use `<pre data-code-language="go" data-code-title="Optional title"><code>…</code></pre>`; escape code as HTML. The article renderer provides syntax styling, line numbers, Copy, and Expand/Collapse controls. Article files are repository-controlled content rendered as HTML. Do not insert untrusted user input here. To add a photograph, copy the image to `static/images/` and add its path, description, category (`Nature` or `City`), width, and height to `photos.json`.
+To add an article, add its metadata to `posts.json` and a matching HTML file. Code examples use `<pre data-code-language="go" data-code-title="Optional title"><code>…</code></pre>`; escape code as HTML. The article renderer provides syntax styling, line numbers, Copy, and Expand/Collapse controls. Article files are repository-controlled content rendered as HTML. Do not insert untrusted user input here. To add photographs, drop JPEG, PNG, WebP, AVIF, or TIFF files into `static/images/`. They are discovered automatically when starting development or building, and while the development server is running. Portrait and article images are excluded from the gallery. For a custom accessible description or display order, add the original `/images/filename.jpg` path and `alt` text to `photos.json`. Descriptions are not shown as captions.
+
+Sharp generates responsive WebP files up to 2400 pixels wide, corrects camera orientation, strips metadata, and keeps the originals untouched. The gallery uses `srcset` and lazy loading; the image viewer loads a larger optimized version only when opened. Generated files are cached by content hash, ignored by Git, and regenerated before deployment. Run `bun run photos:prepare` to process them separately.
 
 The three existing articles, twelve photographs, portrait, and public professional details were migrated from https://aleksandrgyumushyan.com/ on October 19, 2026. Original article URLs are preserved (with SvelteKit's default normalization of trailing slashes). Images and fonts are local, with no dependency on the old domain. The old résumé URL returned 404 and is intentionally omitted until a working file is provided.
 
@@ -48,6 +51,6 @@ Git is initialized on `main`. The first commit preserves the initial website; su
 
 ## Interaction and accessibility
 
-The blog supports live title/topic search and an empty state. Photography supports category filters, a native modal dialog, previous/next controls, left/right arrow keys, Escape to close, focus restoration, and background scroll locking. Navigation, visible keyboard focus, a skip link, descriptive image labels, and reduced-motion styles are included.
+The blog supports live title/topic search and an empty state. Photography uses a single gallery with a native modal dialog, previous/next controls, left/right arrow keys, Escape to close, focus restoration, and background scroll locking. Navigation, visible keyboard focus, a skip link, descriptive image labels, and reduced-motion styles are included.
 
 No deployment has been performed. Domain setup is left for later.

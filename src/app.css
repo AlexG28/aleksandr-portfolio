@@ -78,11 +78,6 @@ img { max-width: 100%; display: block; }
 .empty-state h2 { color: #eee; font-weight: 450; }
 .empty-state .pill-link { margin-top: 20px; }
 .gallery-section { padding-bottom: 65px; }
-.filter-tabs { display: flex; gap: 8px; }
-.filter-tabs button { font-size: 12px; color: var(--muted); border: 1px solid transparent; border-radius: 30px; padding: 9px 16px; }
-.filter-tabs button.active { border-color: #64764e; color: var(--accent); }
-.filter-tabs button:not(.active):hover { color: #eee; }
-.filter-tabs sup { font: 8px var(--mono); margin-left: 5px; }
 .gallery { columns: 3; column-gap: 20px; padding-top: 12px; }
 .gallery-photo { width: 100%; padding: 0; margin: 0 0 20px; break-inside: avoid; display: block; }
 .gallery-photo img { width: 100%; height: auto; }
@@ -187,8 +182,6 @@ body:has(dialog[open]) { overflow: hidden; }
  .archive-toolbar > .eyebrow { font-size: 8px; letter-spacing: 1px; }
  .search input { width: 135px; font-size: 11px; }
  .blog-archive { padding-bottom: 55px; }
- .filter-tabs { gap: 0; }
- .filter-tabs button { padding: 8px 12px; font-size: 11px; }
  .gallery { column-gap: 13px; padding-top: 8px; }
  .gallery-photo { margin-bottom: 13px; }
  .gallery-section { padding-bottom: 42px; }

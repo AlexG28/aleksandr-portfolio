@@ -7,17 +7,19 @@
     "dev": "bun --bun vite dev",
     "build": "bun --bun vite build",
     "preview": "wrangler dev --port 4173",
-    "prepare": "bun --bun svelte-kit sync",
-    "check": "bun --bun svelte-kit sync && bun --bun svelte-check --tsconfig ./tsconfig.json",
+    "prepare": "bun run photos:prepare && bun --bun svelte-kit sync",
+    "check": "bun run photos:prepare && bun --bun svelte-kit sync && bun --bun svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "gen": "wrangler types",
     "deploy": "bun run build && wrangler deploy",
-    "test": "bun test"
+    "test": "bun test",
+    "photos:prepare": "bun scripts/prepare-photos.ts"
   },
   "devDependencies": {
     "@sveltejs/adapter-cloudflare": "^8.0.0",
     "@sveltejs/kit": "^3.0.0",
     "@sveltejs/vite-plugin-svelte": "^7.2.0",
+    "sharp": "^0.35.5",
     "svelte": "^5.57.1",
     "svelte-check": "^4.6.0",
     "typescript": "^6.0.3",
