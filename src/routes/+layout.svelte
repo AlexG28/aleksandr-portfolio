@@ -5,13 +5,16 @@
  import { page } from '$app/state';
  import favicon from '#lib/assets/favicon.svg';
  import ThemeToggle from '#lib/ThemeToggle.svelte';
+ import { canonicalUrl } from '#lib/site.ts';
  let { children } = $props();
  const links = [['About', '/about'], ['Blog', '/blog'], ['Photography', '/photography']];
 </script>
 <svelte:head>
  <link rel="icon" href={favicon}/>
  <meta property="og:site_name" content="Aleksandr Gyumushyan"/>
- <meta property="og:type" content="website"/>
+ <link rel="canonical" href={canonicalUrl(page.url.pathname)}/>
+ <meta property="og:url" content={canonicalUrl(page.url.pathname)}/>
+ <meta property="og:type" content={page.url.pathname.startsWith('/blog/') ? 'article' : 'website'}/>
 </svelte:head>
 <a class="skip-link" href="#main">Skip to content</a>
 <div class="site-shell">

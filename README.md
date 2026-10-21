@@ -1,6 +1,6 @@
 # Aleksandr Gyumushyan — personal website
 
-A SvelteKit 3 + Svelte 5 + TypeScript site, built with Bun and configured for Cloudflare Workers. Pages are server-rendered at request time; this project does not use a static site generator or prerendering.
+A SvelteKit 3 + Svelte 5 + TypeScript site, built with Bun and configured for Cloudflare Pages with an SSR function. Pages are server-rendered at request time; this project does not use a static site generator or prerendering.
 
 ## Local development
 
@@ -18,16 +18,17 @@ bun run build    # Production build for Cloudflare
 bun run preview  # Serve the production build with the Cloudflare runtime
 ```
 
-## Deploy to Cloudflare
+## Deploy to Cloudflare Pages
 
-The Workers configuration is in `wrangler.jsonc`. The Worker is named `aleksandr-portfolio`; change it there if needed. No domain configuration, account ID, secrets, database, or external services are required by the application.
+The production domain is `https://aleksandrgyumushyan.com`. See [CLOUDFLARE.md](CLOUDFLARE.md) for the exact dashboard settings, version pins, custom-domain setup, and launch checks.
 
-```sh
-bunx wrangler login
-bun run deploy
-```
+- Build command: `bun install --frozen-lockfile && bun run build:pages`
+- Build output directory: `.svelte-kit/cloudflare`
+- Production branch: `main`
+- Build environment: `BUN_VERSION=1.3.14`, `SKIP_DEPENDENCY_INSTALL=true`
+- Runtime configuration: `wrangler.jsonc` (Pages, not Workers)
 
-Authenticate with your own Cloudflare account first. Deployment publishes to a workers.dev address. A custom domain can be attached later. For Cloudflare's Git integration, use `bun install --frozen-lockfile` as the install command, `bun run build` as the build command, and `bunx wrangler deploy` as the deploy command.
+`bun run preview` serves the production build with the Pages runtime. `bun run deploy` builds and publishes to an existing Pages project after you authenticate. No deployment or DNS changes have been performed.
 
 ## Content
 
@@ -55,4 +56,4 @@ The header includes a light/dark theme toggle. It follows the system preference 
 
 The blog supports live title/topic search and an empty state. Photography uses a single gallery with a native modal dialog, previous/next controls, left/right arrow keys, Escape to close, focus restoration, and background scroll locking. Navigation, visible keyboard focus, a skip link, descriptive image labels, and reduced-motion styles are included.
 
-No deployment has been performed. Domain setup is left for later.
+No deployment has been performed. Follow `CLOUDFLARE.md` when ready to launch.
