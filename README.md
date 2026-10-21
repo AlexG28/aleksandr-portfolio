@@ -51,6 +51,8 @@ Git is initialized on `main`. The first commit preserves the initial website; su
 
 ## Interaction and accessibility
 
+The header includes a light/dark theme toggle. It follows the system preference initially and remembers a manual choice across visits. Code highlighting has a separate contrast-adjusted palette for each theme.
+
 The blog supports live title/topic search and an empty state. Photography uses a single gallery with a native modal dialog, previous/next controls, left/right arrow keys, Escape to close, focus restoration, and background scroll locking. Navigation, visible keyboard focus, a skip link, descriptive image labels, and reduced-motion styles are included.
 
 No deployment has been performed. Domain setup is left for later.
