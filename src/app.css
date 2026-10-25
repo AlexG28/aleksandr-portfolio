@@ -75,8 +75,8 @@ img { max-width: 100%; display: block; }
 .site-header nav { display: flex; gap: 38px; margin-left: 0; font-size: 14px; }
 .site-header nav a { color: var(--muted); padding: 12px 0; }
 .site-header nav a:hover, .site-header nav a[aria-current] { color: var(--fg); }
-.header-github { font-size: 13px; }
-.header-github span { margin-left: 8px; color: var(--muted); }
+.header-github, .header-resume { font-size: 13px; white-space: nowrap; }
+.header-github span, .header-resume span { margin-left: 8px; color: var(--muted); }
 .eyebrow { font: 10px var(--mono); text-transform: uppercase; letter-spacing: 1px; color: var(--muted); line-height: 1.6; }
 .accent { color: var(--accent); }
 .home-hero { padding: 65px 0 55px; border-bottom: 1px solid var(--line); }
@@ -194,6 +194,11 @@ body:has(dialog[open]) { overflow: hidden; }
  .gallery { columns: 2; }
  .experience-row { grid-template-columns: 150px 1fr; gap: 30px; }
 }
+@media (max-width: 800px) {
+ .site-header { height: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; padding: 18px 0 10px; }
+ .site-header nav { grid-column: 1 / -1; grid-row: 2; }
+ .header-actions { grid-column: 2; grid-row: 1; }
+}
 @media (max-width: 600px) {
  .site-shell { padding: 0 24px; }
  .site-header { height: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; padding: 18px 0 10px; }
@@ -261,6 +266,7 @@ body:has(dialog[open]) { overflow: hidden; }
 :root[data-theme='light'] .theme-icon-moon { display: block; }
 @media (max-width: 600px) {
 
- .header-actions { grid-column: 2; grid-row: 1; gap: 0; }
+ .header-actions { grid-column: 2; grid-row: 1; gap: 12px; }
+ .header-resume { font-size: 12px; }
  .theme-toggle { width: 34px; height: 34px; }
 }

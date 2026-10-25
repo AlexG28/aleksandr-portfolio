@@ -16,7 +16,7 @@ export default defineConfig(async () => {
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			adapter: adapter({
-    routes: { include: ['/*'], exclude: ['/_app/*', '/images/*'] }
+    routes: { include: ['/*'], exclude: ['/_app/*', '/images/*', '/resume/*'] }
    })
 		})
 	]

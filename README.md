@@ -37,6 +37,7 @@ The production domain is `https://aleksandrgyumushyan.com`. See [CLOUDFLARE.md](
 - Article bodies: `src/lib/content/<slug>.html`
 - Optional photography descriptions and display order: `src/lib/content/photos.json`
 - Automatic image processing: `scripts/photos.ts`
+- Résumé PDF (linked from the header and footer): `static/resume/aleksandr_resume.pdf`
 - Original photographs, portrait, and article diagrams: `static/images/`
 - Shared design tokens and responsive styles: `src/app.css`
 
@@ -44,7 +45,7 @@ To add an article, add its metadata to `posts.json` and a matching HTML file. Co
 
 Sharp generates responsive WebP files up to 2400 pixels wide, corrects camera orientation, strips metadata, and keeps the originals untouched. The gallery uses `srcset` and lazy loading; the image viewer loads a larger optimized version only when opened. Generated files are cached by content hash, ignored by Git, and regenerated before deployment. Run `bun run photos:prepare` to process them separately.
 
-The three existing articles, twelve photographs, portrait, and public professional details were migrated from https://aleksandrgyumushyan.com/ on October 19, 2026. Original article URLs are preserved (with SvelteKit's default normalization of trailing slashes). Images and fonts are local, with no dependency on the old domain. The old résumé URL returned 404 and is intentionally omitted until a working file is provided.
+The three existing articles, twelve photographs, portrait, and public professional details were migrated from https://aleksandrgyumushyan.com/ on October 19, 2026. Original article URLs are preserved (with SvelteKit's default normalization of trailing slashes). Images and fonts are local, with no dependency on the old domain. The résumé is now available at the original `/resume/aleksandr_resume.pdf` URL. Replace that file to update it.
 
 ## Version control
 
