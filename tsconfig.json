@@ -3,7 +3,8 @@
   "compilerOptions": {
     "strict": true,
     "types": [
-      "$app/types"
+      "$app/types",
+      "node"
     ]
   },
   "include": [
