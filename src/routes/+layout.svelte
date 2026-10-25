@@ -19,7 +19,7 @@
 <a class="skip-link" href="#main">Skip to content</a>
 <div class="site-shell">
  <header class="site-header">
-  <a class="wordmark" href="/" aria-label="Aleksandr Gyumushyan, home">ag<span>↗</span></a>
+  <a class="wordmark" href="/" aria-label="Aleksandr Gyumushyan, home">Aleksandr Gyumushyan</a>
   <nav aria-label="Main navigation">
    {#each links as [label, href]}<a {href} aria-current={page.url.pathname.startsWith(href) ? 'page' : undefined}>{label}</a>{/each}
   </nav>

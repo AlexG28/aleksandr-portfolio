@@ -6,7 +6,7 @@
 <svelte:head><title>Aleksandr Gyumushyan</title><meta name="description" content="Aleksandr Gyumushyan’s personal website. About, blog, and photography."/></svelte:head>
 <section class="home-hero">
  <h1>Aleksandr<br/><span class="muted-heading">Gyumushyan.</span></h1>
- <div class="hero-bottom"><p>Computer science, systems, and photography.</p><a class="text-link" href="/about">About me ↗</a></div>
+ <div class="hero-bottom"><a class="text-link" href="/about">About me ↗</a></div>
 </section>
 <section class="section writing-section"><div class="section-heading"><h2>Blog</h2><a class="text-link" href="/blog">All posts ↗</a></div><PostList items={posts}/></section>
 <section class="section photo-section"><div class="section-heading"><h2>Photography</h2><a class="text-link" href="/photography">All photos ↗</a></div><div class="home-photos">{#each photos.slice(0, 3) as photo}<a href="/photography" class="home-photo" aria-label={'View photography: ' + photo.alt}><div class="image-wrap"><img src={photo.src} srcset={photo.srcset} sizes="(max-width: 600px) calc(50vw - 30px), (max-width: 900px) 27vw, (max-width: 1440px) 28vw, 410px" alt={photo.alt} width={photo.width} height={photo.height} decoding="async" loading="lazy"/></div></a>{/each}</div></section>
