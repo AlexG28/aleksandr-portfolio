@@ -67,7 +67,9 @@ a, button { touch-action: manipulation; }
 ::selection { background: var(--accent); color: var(--bg); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
 img { max-width: 100%; display: block; }
-.site-shell { max-width: 1440px; padding: 0 7%; margin: auto; }
+.site-shell { max-width: 1440px; padding: 0 7%; margin: auto; min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
+.site-shell > main { flex: 1; }
+.site-header, .site-footer { flex-shrink: 0; }
 .site-header { height: 104px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
 .wordmark { font-size: 16px; font-weight: 500; letter-spacing: -.4px; line-height: 1.4; white-space: nowrap; }
 .site-header nav { display: flex; gap: 38px; margin-left: 0; font-size: 14px; }
@@ -120,7 +122,7 @@ img { max-width: 100%; display: block; }
 .search > span { font-size: 26px; }
 .search input { border: 0; background: none; color: var(--fg); width: 180px; padding: 10px 4px; font-size: 12px; outline-offset: 0; }
 .search input::placeholder { color: var(--muted); }
-.blog-archive { padding-bottom: 80px; min-height: 400px; }
+.blog-archive { padding-bottom: 80px; }
 .empty-state { padding: 45px 0; color: var(--muted); }
 .empty-state h2 { color: var(--fg); font-weight: 450; }
 .empty-state .pill-link { margin-top: 20px; }
